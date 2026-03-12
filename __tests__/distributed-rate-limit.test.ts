@@ -199,11 +199,7 @@ describe("Distributed Rate Limiting", () => {
     })
 
     afterEach(() => {
-      if (originalNodeEnv !== undefined) {
-        process.env["NODE_ENV"] = originalNodeEnv
-      } else {
-        delete process.env["NODE_ENV"]
-      }
+      vi.unstubAllEnvs()
       if (originalRedisUrl !== undefined) {
         process.env["REDIS_URL"] = originalRedisUrl
       } else {
@@ -213,7 +209,7 @@ describe("Distributed Rate Limiting", () => {
     })
 
     it("returns 503 for security-critical endpoints when Redis unavailable in production", async () => {
-      process.env["NODE_ENV"] = "production"
+      vi.stubEnv("NODE_ENV", "production")
       delete process.env["REDIS_URL"]
       _resetCacheAdapter()
 
@@ -232,7 +228,7 @@ describe("Distributed Rate Limiting", () => {
     })
 
     it("still allows non-critical endpoints through when Redis unavailable in production", async () => {
-      process.env["NODE_ENV"] = "production"
+      vi.stubEnv("NODE_ENV", "production")
       delete process.env["REDIS_URL"]
       _resetCacheAdapter()
 

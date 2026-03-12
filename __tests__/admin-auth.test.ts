@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest"
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { isAdminRole } from "@/lib/auth-server"
 import { _resetCacheAdapter } from "@/lib/cache/redis-adapter"
 import fs from "fs"
@@ -110,7 +110,7 @@ describe("Admin Auth", () => {
     })
 
     afterEach(() => {
-      process.env["NODE_ENV"] = originalNodeEnv
+      vi.unstubAllEnvs()
       _resetCacheAdapter()
     })
 

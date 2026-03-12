@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest"
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import {
   InMemoryCacheAdapter,
   RedisCacheAdapter,
@@ -161,33 +161,33 @@ describe("Production Cache Policy", () => {
   })
 
   afterEach(() => {
-    process.env["NODE_ENV"] = originalNodeEnv
+    vi.unstubAllEnvs()
     _resetCacheAdapter()
   })
 
   it("assertProductionCacheReady throws when NODE_ENV=production and REDIS_URL is missing", () => {
-    process.env["NODE_ENV"] = "production"
+    vi.stubEnv("NODE_ENV", "production")
     expect(() => assertProductionCacheReady()).toThrow(ProductionCacheUnavailableError)
   })
 
   it("assertProductionCacheReady does not throw in test mode without Redis", () => {
-    process.env["NODE_ENV"] = "test"
+    vi.stubEnv("NODE_ENV", "test")
     expect(() => assertProductionCacheReady()).not.toThrow()
   })
 
   it("getSecurityCriticalCacheAdapter throws in production without Redis", () => {
-    process.env["NODE_ENV"] = "production"
+    vi.stubEnv("NODE_ENV", "production")
     expect(() => getSecurityCriticalCacheAdapter()).toThrow(ProductionCacheUnavailableError)
   })
 
   it("getSecurityCriticalCacheAdapter returns adapter in test mode", () => {
-    process.env["NODE_ENV"] = "test"
+    vi.stubEnv("NODE_ENV", "test")
     const adapter = getSecurityCriticalCacheAdapter()
     expect(adapter).toBeInstanceOf(InMemoryCacheAdapter)
   })
 
   it("assertProductionCacheReady throws when Redis adapter is not ready in production", () => {
-    process.env["NODE_ENV"] = "production"
+    vi.stubEnv("NODE_ENV", "production")
     process.env["REDIS_URL"] = "redis://localhost:6379"
     // getCacheAdapter will create a RedisCacheAdapter but it won't be ready
     // (ioredis not installed in test env)

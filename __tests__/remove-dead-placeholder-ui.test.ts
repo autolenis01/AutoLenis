@@ -112,33 +112,33 @@ describe("Specific dead placeholder buttons are removed", () => {
   it("buyer offer page does not have Accept Offer button triggering modal", () => {
     const src = readFile("app/buyer/offers/[offerId]/page.tsx")
     // The page should not contain a button that shows "Accept Offer" and triggers setShowModal
-    expect(src).not.toMatch(/onClick.*setShowModal.*Accept Offer/s)
-    expect(src).not.toMatch(/Accept Offer.*setShowModal/s)
+    expect(src).not.toMatch(/onClick[\s\S]*setShowModal[\s\S]*Accept Offer/)
+    expect(src).not.toMatch(/Accept Offer[\s\S]*setShowModal/)
   })
 
   it("buyer offer page does not have Negotiate button triggering modal", () => {
     const src = readFile("app/buyer/offers/[offerId]/page.tsx")
-    expect(src).not.toMatch(/Negotiate.*setShowModal/s)
+    expect(src).not.toMatch(/Negotiate[\s\S]*setShowModal/)
   })
 
   it("dealer offer page does not have Edit Offer button triggering modal", () => {
     const src = readFile("app/dealer/offers/[offerId]/page.tsx")
-    expect(src).not.toMatch(/Edit Offer.*setShowModal/s)
+    expect(src).not.toMatch(/Edit Offer[\s\S]*setShowModal/)
   })
 
   it("dealer offer page does not have Withdraw Offer button triggering modal", () => {
     const src = readFile("app/dealer/offers/[offerId]/page.tsx")
-    expect(src).not.toMatch(/Withdraw Offer.*setShowModal/s)
+    expect(src).not.toMatch(/Withdraw Offer[\s\S]*setShowModal/)
   })
 
   it("dealer lead page does not have Submit Offer button triggering modal", () => {
     const src = readFile("app/dealer/leads/[leadId]/page.tsx")
-    expect(src).not.toMatch(/Submit Offer.*setShowModal/s)
+    expect(src).not.toMatch(/Submit Offer[\s\S]*setShowModal/)
   })
 
   it("dealer lead page does not have Send Message CTA triggering modal", () => {
     const src = readFile("app/dealer/leads/[leadId]/page.tsx")
-    expect(src).not.toMatch(/Send Message.*setShowModal/s)
+    expect(src).not.toMatch(/Send Message[\s\S]*setShowModal/)
   })
 })
 
