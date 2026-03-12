@@ -14,7 +14,8 @@ export default async function DealerLayout({
   let user
   try {
     user = await getSessionUser()
-  } catch {
+  } catch (error) {
+    console.error("[DealerLayout] Session resolution failed:", error)
     redirect("/auth/signin")
   }
 

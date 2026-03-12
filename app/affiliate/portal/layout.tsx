@@ -10,7 +10,8 @@ export default async function AffiliatePortalLayout({ children }: { children: Re
   let user
   try {
     user = await getSessionUser()
-  } catch {
+  } catch (error) {
+    console.error("[AffiliateLayout] Session resolution failed:", error)
     redirect("/affiliate?signin=required")
   }
 

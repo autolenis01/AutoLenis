@@ -57,7 +57,7 @@ export async function rateLimit(request: NextRequest, config: RateLimitConfig): 
       if (securityCritical) {
         console.error("[RateLimit] CRITICAL: Redis unavailable in production for security-critical endpoint. Degrading to in-memory rate limiting. Configure REDIS_URL to restore full protection.")
       } else {
-        console.error("[RateLimit] CRITICAL: Redis unavailable in production — rate limiting degraded to in-memory. Configure REDIS_URL to restore full protection.")
+        console.error("[RateLimit] Redis unavailable in production — rate limiting degraded to in-memory. Configure REDIS_URL to restore full protection.")
       }
     }
   }

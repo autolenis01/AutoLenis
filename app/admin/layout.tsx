@@ -34,7 +34,8 @@ export default async function AdminLayout({
   let user
   try {
     user = await getSessionUser()
-  } catch {
+  } catch (error) {
+    console.error("[AdminLayout] Session resolution failed:", error)
     redirect("/admin/sign-in")
   }
 

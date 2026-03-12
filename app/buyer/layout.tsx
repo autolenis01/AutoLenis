@@ -10,7 +10,8 @@ export default async function BuyerLayout({ children }: { children: React.ReactN
   let user
   try {
     user = await getSessionUser()
-  } catch {
+  } catch (error) {
+    console.error("[BuyerLayout] Session resolution failed:", error)
     redirect("/auth/signin")
   }
 
