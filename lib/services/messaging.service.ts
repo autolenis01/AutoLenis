@@ -169,7 +169,19 @@ export class MessagingService {
           },
         }
       }
-      // Submission is not APPROVED (rejected/superseded/expired/missing) — fall through to cash
+      // Submission is not APPROVED (rejected/superseded/expired/missing).
+      // Do NOT fall through to cash — buyer chose the external preapproval path
+      // and that path is no longer valid. They must upload a new approval or get
+      // a native prequal. This prevents invalid external approvals from silently
+      // unlocking messaging through an unintended cash fallback.
+      return {
+        approvalType: "external",
+        readiness: {
+          approvalSource: "External Pre-Approval Uploaded",
+          approvalType: "external",
+          uploaded: false,
+        },
+      }
     }
 
     // Check buyer profile for cash-buyer context (no prequalification record needed)

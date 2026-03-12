@@ -71,11 +71,18 @@ function buildReadinessPayload(
   if (prequal && prequal.source === "EXTERNAL_MANUAL") {
     // Cross-validate: linked ExternalPreApprovalSubmission must be APPROVED
     if (prequal.submissionStatus !== "APPROVED") {
-      // Submission was rejected/superseded/expired/missing — fall through to cash
-      if (buyerExists) {
-        return { approvalType: "cash", readiness: { approvalSource: "Cash Buyer", approvalType: "cash" } }
+      // Submission was rejected/superseded/expired/missing.
+      // Do NOT fall through to cash — return invalid external instead.
+      // This prevents invalid external approvals from silently unlocking
+      // messaging through an unintended cash fallback.
+      return {
+        approvalType: "external",
+        readiness: {
+          approvalSource: "External Pre-Approval Uploaded",
+          approvalType: "external",
+          uploaded: false,
+        },
       }
-      return null
     }
 
     const isExpired = prequal.expiresAt && new Date(prequal.expiresAt) < new Date()
@@ -404,7 +411,7 @@ describe("Messaging Service - External Preapproval Integration", () => {
 
 describe("Messaging Service - External Preapproval Hardening", () => {
   describe("Rejected external preapproval", () => {
-    it("should fall through to cash when submission is REJECTED", () => {
+    it("should return invalid external (not cash) when submission is REJECTED", () => {
       const futureDate = new Date(Date.now() + 86400000 * 30)
       const result = buildReadinessPayload(
         { source: "EXTERNAL_MANUAL", status: "ACTIVE", maxOtd: 38000, expiresAt: futureDate, submissionStatus: "REJECTED" },
@@ -412,65 +419,70 @@ describe("Messaging Service - External Preapproval Hardening", () => {
       )
 
       expect(result).not.toBeNull()
-      expect(result!.approvalType).toBe("cash")
-      expect(result!.readiness.approvalSource).toBe("Cash Buyer")
+      expect(result!.approvalType).toBe("external")
+      expect(result!.readiness.uploaded).toBe(false)
     })
 
-    it("should return null when submission is REJECTED and no buyer exists", () => {
+    it("should return invalid external when submission is REJECTED and no buyer exists", () => {
       const futureDate = new Date(Date.now() + 86400000 * 30)
       const result = buildReadinessPayload(
         { source: "EXTERNAL_MANUAL", status: "ACTIVE", maxOtd: 38000, expiresAt: futureDate, submissionStatus: "REJECTED" },
         false,
       )
 
-      expect(result).toBeNull()
+      expect(result).not.toBeNull()
+      expect(result!.approvalType).toBe("external")
+      expect(result!.readiness.uploaded).toBe(false)
     })
   })
 
   describe("Superseded external preapproval", () => {
-    it("should fall through to cash when submission is SUPERSEDED", () => {
+    it("should return invalid external (not cash) when submission is SUPERSEDED", () => {
       const futureDate = new Date(Date.now() + 86400000 * 30)
       const result = buildReadinessPayload(
         { source: "EXTERNAL_MANUAL", status: "ACTIVE", maxOtd: 38000, expiresAt: futureDate, submissionStatus: "SUPERSEDED" },
         true,
       )
 
-      expect(result!.approvalType).toBe("cash")
-      expect(result!.readiness.approvalSource).toBe("Cash Buyer")
+      expect(result!.approvalType).toBe("external")
+      expect(result!.readiness.uploaded).toBe(false)
     })
   })
 
   describe("Expired external preapproval submission", () => {
-    it("should fall through to cash when submission status is EXPIRED", () => {
+    it("should return invalid external (not cash) when submission status is EXPIRED", () => {
       const futureDate = new Date(Date.now() + 86400000 * 30) // prequal date not expired
       const result = buildReadinessPayload(
         { source: "EXTERNAL_MANUAL", status: "ACTIVE", maxOtd: 38000, expiresAt: futureDate, submissionStatus: "EXPIRED" },
         true,
       )
 
-      expect(result!.approvalType).toBe("cash")
+      expect(result!.approvalType).toBe("external")
+      expect(result!.readiness.uploaded).toBe(false)
     })
   })
 
   describe("Missing submission link", () => {
-    it("should fall through to cash when no submission status is available", () => {
+    it("should return invalid external (not cash) when no submission status is available", () => {
       const futureDate = new Date(Date.now() + 86400000 * 30)
       const result = buildReadinessPayload(
         { source: "EXTERNAL_MANUAL", status: "ACTIVE", maxOtd: 38000, expiresAt: futureDate, submissionStatus: null },
         true,
       )
 
-      expect(result!.approvalType).toBe("cash")
+      expect(result!.approvalType).toBe("external")
+      expect(result!.readiness.uploaded).toBe(false)
     })
 
-    it("should fall through to cash when submission status is undefined", () => {
+    it("should return invalid external (not cash) when submission status is undefined", () => {
       const futureDate = new Date(Date.now() + 86400000 * 30)
       const result = buildReadinessPayload(
         { source: "EXTERNAL_MANUAL", status: "ACTIVE", maxOtd: 38000, expiresAt: futureDate },
         true,
       )
 
-      expect(result!.approvalType).toBe("cash")
+      expect(result!.approvalType).toBe("external")
+      expect(result!.readiness.uploaded).toBe(false)
     })
   })
 
@@ -517,16 +529,50 @@ describe("Messaging Service - External Preapproval Hardening", () => {
   })
 
   describe("Eligibility validation with hardened readiness", () => {
-    it("should deny messaging for rejected external preapproval (falls to cash eligible)", () => {
+    it("should deny messaging for rejected external preapproval (no cash fallback)", () => {
       const futureDate = new Date(Date.now() + 86400000 * 30)
       const resolved = buildReadinessPayload(
         { source: "EXTERNAL_MANUAL", status: "ACTIVE", maxOtd: 38000, expiresAt: futureDate, submissionStatus: "REJECTED" },
         true,
       )!
-      // Falls to cash — cash is always eligible
+      // Invalid external preapproval — NOT allowed to fall through to cash
       const result = validateEligibility(resolved.approvalType, resolved.readiness)
-      expect(result.eligible).toBe(true) // cash is eligible
-      expect(resolved.approvalType).toBe("cash") // but correctly classified as cash, not external
+      expect(result.eligible).toBe(false) // blocked — no cash fallback
+      expect(resolved.approvalType).toBe("external") // correctly classified as external
+      expect(result.reason).toContain("uploaded")
+    })
+
+    it("should deny messaging for superseded external preapproval (no cash fallback)", () => {
+      const futureDate = new Date(Date.now() + 86400000 * 30)
+      const resolved = buildReadinessPayload(
+        { source: "EXTERNAL_MANUAL", status: "ACTIVE", maxOtd: 38000, expiresAt: futureDate, submissionStatus: "SUPERSEDED" },
+        true,
+      )!
+      const result = validateEligibility(resolved.approvalType, resolved.readiness)
+      expect(result.eligible).toBe(false)
+      expect(resolved.approvalType).toBe("external")
+    })
+
+    it("should deny messaging for expired external submission (no cash fallback)", () => {
+      const futureDate = new Date(Date.now() + 86400000 * 30)
+      const resolved = buildReadinessPayload(
+        { source: "EXTERNAL_MANUAL", status: "ACTIVE", maxOtd: 38000, expiresAt: futureDate, submissionStatus: "EXPIRED" },
+        true,
+      )!
+      const result = validateEligibility(resolved.approvalType, resolved.readiness)
+      expect(result.eligible).toBe(false)
+      expect(resolved.approvalType).toBe("external")
+    })
+
+    it("should deny messaging for missing linked submission (no cash fallback)", () => {
+      const futureDate = new Date(Date.now() + 86400000 * 30)
+      const resolved = buildReadinessPayload(
+        { source: "EXTERNAL_MANUAL", status: "ACTIVE", maxOtd: 38000, expiresAt: futureDate, submissionStatus: null },
+        true,
+      )!
+      const result = validateEligibility(resolved.approvalType, resolved.readiness)
+      expect(result.eligible).toBe(false)
+      expect(resolved.approvalType).toBe("external")
     })
 
     it("should deny messaging for expired external preapproval with APPROVED submission", () => {
@@ -550,6 +596,13 @@ describe("Messaging Service - External Preapproval Hardening", () => {
       const result = validateEligibility(resolved.approvalType, resolved.readiness)
       expect(result.eligible).toBe(true)
       expect(resolved.approvalType).toBe("external")
+    })
+
+    it("should allow messaging for true cash buyer (no prequal at all)", () => {
+      const resolved = buildReadinessPayload(null, true)!
+      const result = validateEligibility(resolved.approvalType, resolved.readiness)
+      expect(result.eligible).toBe(true)
+      expect(resolved.approvalType).toBe("cash")
     })
   })
 
