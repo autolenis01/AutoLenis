@@ -301,7 +301,7 @@ export default function BuyerSearchPage() {
                   <h3 className="font-semibold">Get pre-qualified first</h3>
                   <p className="text-sm text-muted-foreground">
                     Complete a quick soft credit check to see your budget and filter vehicles within your price range.
-                    You can also <Link href="/buyer/prequal/external" className="text-primary underline">upload an outside approval</Link> if you already have one.
+                    You can also <Link href="/buyer/prequal/manual-preapproval" className="text-primary underline">upload an outside approval</Link> if you already have one.
                   </p>
                 </div>
                 <Link href="/buyer/onboarding">

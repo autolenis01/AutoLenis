@@ -49,7 +49,7 @@ describe("Buyer Dual-Lane Search", () => {
 
   it("search page links to outside approval upload", () => {
     const page = readFile("app/buyer/search/page.tsx")
-    expect(page).toContain("/buyer/prequal/external")
+    expect(page).toContain("/buyer/prequal/manual-preapproval")
   })
 
   it("search page has no dead-end vehicle cards (all have actions)", () => {
@@ -270,7 +270,7 @@ describe("External Approval Affecting Buyer Search", () => {
 
   it("buyer search page links to external approval upload", () => {
     const page = readFile("app/buyer/search/page.tsx")
-    expect(page).toContain("/buyer/prequal/external")
+    expect(page).toContain("/buyer/prequal/manual-preapproval")
   })
 })
 
