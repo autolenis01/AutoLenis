@@ -11,7 +11,13 @@ export default async function DealerLayout({
 }: {
   children: React.ReactNode
 }) {
-  const user = await getSessionUser()
+  let user
+  try {
+    user = await getSessionUser()
+  } catch (error) {
+    console.error("[DealerLayout] Session resolution failed:", error)
+    redirect("/auth/signin")
+  }
 
   if (!user || !["DEALER", "DEALER_USER"].includes(user.role)) {
     redirect("/auth/signin")

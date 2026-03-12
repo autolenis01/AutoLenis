@@ -186,6 +186,6 @@ describe("D) Prisma schema – AdminNotification model", () => {
 
   it("Workspace model should have adminNotifications relation", () => {
     const schema = readSource("prisma/schema.prisma")
-    expect(schema).toContain("adminNotifications   AdminNotification[]")
+    expect(schema).toMatch(/adminNotifications\s+AdminNotification\[\]/)
   })
 })

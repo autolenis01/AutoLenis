@@ -28,52 +28,52 @@ model Workspace {
   createdBy String?
 
   // Relations
-  users              User[]
-  buyerProfiles      BuyerProfile[]
-  dealers            Dealer[]
-  dealerUsers        DealerUser[]
-  adminUsers         AdminUser[]
-  affiliates         Affiliate[]
-  preQualifications  PreQualification[]
-  buyerPreferences   BuyerPreferences[]
-  inventoryItems     InventoryItem[]
-  shortlists         Shortlist[]
-  auctions           Auction[]
-  auctionParticipants AuctionParticipant[]
-  auctionOffers      AuctionOffer[]
-  bestPriceOptions   BestPriceOption[]
-  selectedDeals      SelectedDeal[]
-  financingOffers    FinancingOffer[]
-  externalPreApprovals ExternalPreApproval[]
-  insuranceQuotes    InsuranceQuote[]
-  insurancePolicies  InsurancePolicy[]
-  contractDocuments  ContractDocument[]
-  contractShieldScans ContractShieldScan[]
-  eSignEnvelopes     ESignEnvelope[]
-  pickupAppointments PickupAppointment[]
-  referrals          Referral[]
-  clicks             Click[]
-  commissions        Commission[]
-  payouts            Payout[]
-  affiliateShareEvents AffiliateShareEvent[]
-  affiliateDocuments AffiliateDocument[]
-  depositPayments    DepositPayment[]
-  serviceFeePayments ServiceFeePayment[]
-  paymentMethods     PaymentMethod[]
-  tradeIns           TradeIn[]
-  dealDocuments      DealDocument[]
-  documentRequests   DocumentRequest[]
-  refinanceLeads     RefinanceLead[]
-  insuranceDocRequests InsuranceDocRequest[]
-  depositRequests      DepositRequest[]
-  conciergeFeeRequests ConciergeFeeRequest[]
-  refunds              Refund[]
-  adminNotifications   AdminNotification[]
-  transactions         Transaction[]
-  chargebacks          Chargeback[]
-  financialAuditLogs   FinancialAuditLog[]
-  aiConversations      AiConversation[]
-  aiAdminActions       AiAdminAction[]
+  users                          User[]
+  buyerProfiles                  BuyerProfile[]
+  dealers                        Dealer[]
+  dealerUsers                    DealerUser[]
+  adminUsers                     AdminUser[]
+  affiliates                     Affiliate[]
+  preQualifications              PreQualification[]
+  buyerPreferences               BuyerPreferences[]
+  inventoryItems                 InventoryItem[]
+  shortlists                     Shortlist[]
+  auctions                       Auction[]
+  auctionParticipants            AuctionParticipant[]
+  auctionOffers                  AuctionOffer[]
+  bestPriceOptions               BestPriceOption[]
+  selectedDeals                  SelectedDeal[]
+  financingOffers                FinancingOffer[]
+  externalPreApprovals           ExternalPreApproval[]
+  insuranceQuotes                InsuranceQuote[]
+  insurancePolicies              InsurancePolicy[]
+  contractDocuments              ContractDocument[]
+  contractShieldScans            ContractShieldScan[]
+  eSignEnvelopes                 ESignEnvelope[]
+  pickupAppointments             PickupAppointment[]
+  referrals                      Referral[]
+  clicks                         Click[]
+  commissions                    Commission[]
+  payouts                        Payout[]
+  affiliateShareEvents           AffiliateShareEvent[]
+  affiliateDocuments             AffiliateDocument[]
+  depositPayments                DepositPayment[]
+  serviceFeePayments             ServiceFeePayment[]
+  paymentMethods                 PaymentMethod[]
+  tradeIns                       TradeIn[]
+  dealDocuments                  DealDocument[]
+  documentRequests               DocumentRequest[]
+  refinanceLeads                 RefinanceLead[]
+  insuranceDocRequests           InsuranceDocRequest[]
+  depositRequests                DepositRequest[]
+  conciergeFeeRequests           ConciergeFeeRequest[]
+  refunds                        Refund[]
+  adminNotifications             AdminNotification[]
+  transactions                   Transaction[]
+  chargebacks                    Chargeback[]
+  financialAuditLogs             FinancialAuditLog[]
+  aiConversations                AiConversation[]
+  aiAdminActions                 AiAdminAction[]
   externalPreApprovalSubmissions ExternalPreApprovalSubmission[]
   dealerCoverageGapSignals       DealerCoverageGapSignal[]
   vehicleRequestCases            VehicleRequestCase[]
@@ -101,24 +101,24 @@ enum UserRole {
 }
 
 model User {
-  id                   String   @id @default(cuid())
-  email                String   @unique
-  passwordHash         String   @map("passwordHash")
-  role                 UserRole
-  is_email_verified    Boolean  @default(false)
-  first_name           String?
-  last_name            String?
+  id                      String   @id @default(cuid())
+  email                   String   @unique
+  passwordHash            String   @map("passwordHash")
+  role                    UserRole
+  is_email_verified       Boolean  @default(false)
+  first_name              String?
+  last_name               String?
   // MFA fields - mapped to snake_case database columns
-  mfa_enrolled                Boolean  @default(false)
-  mfa_factor_id               String?
-  mfa_secret                  String?
-  mfa_recovery_codes_hash     String?  @db.Text
-  force_password_reset Boolean  @default(false)
+  mfa_enrolled            Boolean  @default(false)
+  mfa_factor_id           String?
+  mfa_secret              String?
+  mfa_recovery_codes_hash String?  @db.Text
+  force_password_reset    Boolean  @default(false)
   // Supabase Auth migration fields
-  auth_user_id         String?  @unique
-  session_version      Int      @default(0)
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
+  auth_user_id            String?  @unique
+  session_version         Int      @default(0)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
 
   // Workspace / tenant isolation
   workspaceId String?
@@ -246,17 +246,17 @@ model Dealer {
 }
 
 model DealerUser {
-  id        String   @id @default(cuid())
-  userId    String   @unique
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id        String  @id @default(cuid())
+  userId    String  @unique
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   dealerId  String
-  dealer    Dealer   @relation(fields: [dealerId], references: [id], onDelete: Cascade)
+  dealer    Dealer  @relation(fields: [dealerId], references: [id], onDelete: Cascade)
   roleLabel String?
 
   // Workspace / tenant isolation
   workspaceId String?
   workspace   Workspace? @relation(fields: [workspaceId], references: [id])
-  
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -350,7 +350,7 @@ model PreQualification {
   workspace   Workspace? @relation(fields: [workspaceId], references: [id])
 
   // Status lifecycle: ACTIVE, EXPIRED, REVOKED, FAILED, PENDING
-  status              String?
+  status String?
 
   creditScore         Int?
   creditTier          CreditTier
@@ -359,9 +359,9 @@ model PreQualification {
   estimatedMonthlyMax Float
 
   // Cents-based equivalents for precise financial calculations
-  maxOtdAmountCents       Int?
-  minMonthlyPaymentCents  Int?
-  maxMonthlyPaymentCents  Int?
+  maxOtdAmountCents      Int?
+  minMonthlyPaymentCents Int?
+  maxMonthlyPaymentCents Int?
 
   dti               Float?
   dtiRatio          Float?
@@ -371,7 +371,7 @@ model PreQualification {
   consentDate       DateTime?
 
   // Source discriminator: INTERNAL | EXTERNAL_MANUAL | PROVIDER_BACKED
-  source             PreQualSource @default(INTERNAL)
+  source               PreQualSource @default(INTERNAL)
   externalSubmissionId String?
 
   // Provider display name; for manual approvals: "External Verified: <lenderName>"
@@ -380,8 +380,8 @@ model PreQualification {
   rawResponseJson     Json?
 
   // Consent and forwarding authorization artifact references
-  consentArtifactId                String?
-  consumerAuthorizationArtifactId  String?
+  consentArtifactId               String?
+  consumerAuthorizationArtifactId String?
 
   expiresAt DateTime
 
@@ -389,11 +389,11 @@ model PreQualification {
   updatedAt DateTime @updatedAt
 
   // Relations
-  consentArtifact                PrequalConsentArtifact?           @relation(fields: [consentArtifactId], references: [id])
-  consumerAuthorizationArtifact  ConsumerAuthorizationArtifact?   @relation(fields: [consumerAuthorizationArtifactId], references: [id])
-  sessions                       PrequalSession[]
-  providerEvents                 PrequalProviderEvent[]
-  offerSnapshots                 PrequalOfferSnapshot[]
+  consentArtifact               PrequalConsentArtifact?        @relation(fields: [consentArtifactId], references: [id])
+  consumerAuthorizationArtifact ConsumerAuthorizationArtifact? @relation(fields: [consumerAuthorizationArtifactId], references: [id])
+  sessions                      PrequalSession[]
+  providerEvents                PrequalProviderEvent[]
+  offerSnapshots                PrequalOfferSnapshot[]
 
   @@index([buyerId])
   @@index([workspaceId])
@@ -403,11 +403,11 @@ model PreQualification {
 
 // Versioned consent text/UX for FCRA and soft-pull flows
 model ConsentVersion {
-  id      String @id @default(cuid())
+  id String @id @default(cuid())
 
-  version   String   @unique // e.g. "v1.0", "v2.1"
-  label     String   // Human-readable label, e.g. "Soft Pull Consent v2"
-  bodyText  String   @db.Text // Full consent language shown to user
+  version     String    @unique // e.g. "v1.0", "v2.1"
+  label       String // Human-readable label, e.g. "Soft Pull Consent v2"
+  bodyText    String    @db.Text // Full consent language shown to user
   effectiveAt DateTime
   retiredAt   DateTime?
 
@@ -422,7 +422,7 @@ model ConsentVersion {
 
 // Immutable consent artifact — records that a user consented to a specific version
 model ConsentArtifact {
-  id      String @id @default(cuid())
+  id String @id @default(cuid())
 
   userId  String
   buyerId String
@@ -433,12 +433,12 @@ model ConsentArtifact {
   consentVersionId String
   consentVersion   ConsentVersion @relation(fields: [consentVersionId], references: [id])
 
-  consentText   String   @db.Text // Snapshot of text shown at capture time
-  consentGiven  Boolean  @default(true)
-  capturedAt    DateTime @default(now())
+  consentText  String   @db.Text // Snapshot of text shown at capture time
+  consentGiven Boolean  @default(true)
+  capturedAt   DateTime @default(now())
 
-  ipAddress     String?
-  userAgent     String?
+  ipAddress String?
+  userAgent String?
 
   // Link to resulting prequal (populated after provider execution)
   preQualificationId String?
@@ -455,21 +455,21 @@ model ConsentArtifact {
 
 // Provider event log — replaces raw SQL prequal_provider_events table
 model PreQualProviderEvent {
-  id      String @id @default(cuid())
+  id String @id @default(cuid())
 
-  userId              String
-  preQualificationId  String?
+  userId             String
+  preQualificationId String?
 
   workspaceId String?
   workspace   Workspace? @relation(fields: [workspaceId], references: [id])
 
-  providerName    String  // e.g. "AutoLenisPrequal", "MicroBilt", "iPredict"
+  providerName    String // e.g. "AutoLenisPrequal", "MicroBilt", "iPredict"
   requestPayload  Json
   responsePayload Json?
-  status          String  // SUCCESS | ERROR | TIMEOUT
+  status          String // SUCCESS | ERROR | TIMEOUT
   errorMessage    String?
 
-  durationMs      Int?    // Provider call latency
+  durationMs Int? // Provider call latency
 
   createdAt DateTime @default(now())
 
@@ -483,7 +483,7 @@ model PreQualProviderEvent {
 // Separate forwarding authorization artifact — required before prequal results
 // can be shared with dealers or third parties
 model ForwardingAuthorization {
-  id      String @id @default(cuid())
+  id String @id @default(cuid())
 
   userId  String
   buyerId String
@@ -494,15 +494,15 @@ model ForwardingAuthorization {
   preQualificationId String
 
   // What was authorized
-  authorizedRecipientType String  // e.g. "DEALER", "LENDER"
+  authorizedRecipientType String // e.g. "DEALER", "LENDER"
   authorizedRecipientId   String?
 
-  consentText   String  @db.Text // Forwarding-specific consent language
-  consentGiven  Boolean @default(true)
-  capturedAt    DateTime @default(now())
+  consentText  String   @db.Text // Forwarding-specific consent language
+  consentGiven Boolean  @default(true)
+  capturedAt   DateTime @default(now())
 
-  ipAddress     String?
-  userAgent     String?
+  ipAddress String?
+  userAgent String?
 
   revokedAt     DateTime?
   revokedReason String?
@@ -820,7 +820,7 @@ model SelectedDeal {
   // Sourced deal fields (populated for deals originating from sourcing, null for auction deals)
   sourcingCaseId String?
   sourcingCase   VehicleRequestCase? @relation(fields: [sourcingCaseId], references: [id])
-  sourcedOfferId String? @unique
+  sourcedOfferId String?             @unique
   sourcedOffer   SourcedOffer?       @relation(fields: [sourcedOfferId], references: [id])
 
   // Workspace / tenant isolation
@@ -891,7 +891,7 @@ enum ExternalPreApprovalStatus {
 }
 
 model ExternalPreApproval {
-  id      String @id @default(cuid())
+  id      String       @id @default(cuid())
   buyerId String
   buyer   BuyerProfile @relation(fields: [buyerId], references: [id], onDelete: Cascade)
 
@@ -938,17 +938,17 @@ model ExternalPreApprovalSubmission {
   workspace   Workspace? @relation(fields: [workspaceId], references: [id])
 
   // Submission metadata
-  lenderName          String
-  approvedAmount      Float
-  maxOtdAmountCents   Int?     // normalized OTD in cents
-  apr                 Float?
-  aprBps              Int?     // APR in basis points
-  termMonths          Int?
+  lenderName             String
+  approvedAmount         Float
+  maxOtdAmountCents      Int? // normalized OTD in cents
+  apr                    Float?
+  aprBps                 Int? // APR in basis points
+  termMonths             Int?
   minMonthlyPaymentCents Int?
   maxMonthlyPaymentCents Int?
-  dtiRatioBps         Int?     // DTI ratio in basis points
-  expiresAt           DateTime?
-  submissionNotes     String?  // buyer notes
+  dtiRatioBps            Int? // DTI ratio in basis points
+  expiresAt              DateTime?
+  submissionNotes        String? // buyer notes
 
   // Uploaded document (private storage, random filename — OWASP aligned)
   storageBucket       String?
@@ -956,17 +956,17 @@ model ExternalPreApprovalSubmission {
   originalFileName    String?
   fileSizeBytes       Int?
   mimeType            String?
-  sha256              String?  // file integrity hash
+  sha256              String? // file integrity hash
 
   // Review workflow
   status              ExternalPreApprovalStatus @default(SUBMITTED)
   reviewedBy          String?
   reviewedAt          DateTime?
   decisionAt          DateTime?
-  reviewNotes         String?  // admin notes
+  reviewNotes         String? // admin notes
   rejectionReason     String?
   rejectionReasonCode String?
-  supersededById      String?  // self FK for chain tracking
+  supersededById      String? // self FK for chain tracking
 
   // Link to PreQualification created on approval
   preQualificationId String?
@@ -1044,9 +1044,9 @@ model InsurancePolicy {
 
   type String?
 
-  rawPolicyJson Json?    @map("raw_policy_json")
-  isVerified    Boolean  @default(false) @map("is_verified")
-  vehicleVin    String?  @map("vehicle_vin")
+  rawPolicyJson Json?   @map("raw_policy_json")
+  isVerified    Boolean @default(false) @map("is_verified")
+  vehicleVin    String? @map("vehicle_vin")
 
   createdAt DateTime  @default(now())
   updatedAt DateTime?
@@ -1355,15 +1355,15 @@ model Referral {
 
   commissionPaid Boolean @default(false)
 
-  refCode     String?  @map("ref_code")
-  sourceUrl   String?  @map("source_url")
-  utmSource   String?  @map("utm_source")
-  utmMedium   String?  @map("utm_medium")
-  utmCampaign String?  @map("utm_campaign")
-  utmTerm     String?  @map("utm_term")
-  utmContent  String?  @map("utm_content")
+  refCode      String?   @map("ref_code")
+  sourceUrl    String?   @map("source_url")
+  utmSource    String?   @map("utm_source")
+  utmMedium    String?   @map("utm_medium")
+  utmCampaign  String?   @map("utm_campaign")
+  utmTerm      String?   @map("utm_term")
+  utmContent   String?   @map("utm_content")
   attributedAt DateTime? @map("attributed_at")
-  status      String?  @default("pending")
+  status       String?   @default("pending")
 
   createdAt DateTime @default(now())
 
@@ -1459,7 +1459,7 @@ model Payout {
 }
 
 model AffiliateShareEvent {
-  id             String   @id @default(uuid())
+  id             String @id @default(uuid())
   affiliateId    String
   recipientEmail String
 
@@ -1641,8 +1641,8 @@ model DepositRequest {
   amount    Float
   notes     String?
   dueDate   DateTime?
-  status    DepositRequestStatus  @default(REQUESTED)
-  createdBy String  // admin userId
+  status    DepositRequestStatus @default(REQUESTED)
+  createdBy String // admin userId
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1664,8 +1664,8 @@ model ConciergeFeeRequest {
 
   amount    Float
   notes     String?
-  status    ConciergeFeeRequestStatus  @default(REQUESTED)
-  createdBy String  // admin userId
+  status    ConciergeFeeRequestStatus @default(REQUESTED)
+  createdBy String // admin userId
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1913,11 +1913,11 @@ model DealDocument {
   workspaceId String?
   workspace   Workspace? @relation(fields: [workspaceId], references: [id])
 
-  type     String // ID, INSURANCE_PROOF, PAY_STUB, BANK_STATEMENT, TRADE_IN_TITLE, PRE_APPROVAL_LETTER, OTHER
-  fileName String
-  mimeType String?
-  fileSize Int?
-  fileUrl  String
+  type        String // ID, INSURANCE_PROOF, PAY_STUB, BANK_STATEMENT, TRADE_IN_TITLE, PRE_APPROVAL_LETTER, OTHER
+  fileName    String
+  mimeType    String?
+  fileSize    Int?
+  fileUrl     String
   storagePath String?
 
   status          DocumentStatus @default(UPLOADED)
@@ -2090,7 +2090,7 @@ model FundedLoan {
 // ============================================
 
 model InsuranceDocRequest {
-  id                String    @id @default(cuid())
+  id                String @id @default(cuid())
   dealId            String
   buyerId           String
   requestedByRole   String
@@ -2101,12 +2101,12 @@ model InsuranceDocRequest {
   workspaceId String?
   workspace   Workspace? @relation(fields: [workspaceId], references: [id])
 
-  status            String    @default("REQUESTED")
-  dueDate           DateTime?
-  notes             String?
-  documentUrl       String?
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  status      String    @default("REQUESTED")
+  dueDate     DateTime?
+  notes       String?
+  documentUrl String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   @@index([dealId])
   @@index([buyerId])
@@ -2138,18 +2138,18 @@ model InsuranceEvent {
 // ============================================
 
 model ContactMessage {
-  id        String   @id @default(cuid())
-  name      String?  // @deprecated — use firstName + lastName instead
-  firstName String?  @map("first_name")
-  lastName  String?  @map("last_name")
-  email     String
-  phone     String?
-  subject   String?
-  message   String
-  status    String?  @default("new")
+  id               String   @id @default(cuid())
+  name             String? // @deprecated — use firstName + lastName instead
+  firstName        String?  @map("first_name")
+  lastName         String?  @map("last_name")
+  email            String
+  phone            String?
+  subject          String?
+  message          String
+  status           String?  @default("new")
   marketingConsent Boolean? @default(false) @map("marketing_consent")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
 
   @@index([createdAt])
   @@index([email])
@@ -2183,12 +2183,12 @@ model AdminNotification {
   workspace   Workspace            @relation(fields: [workspaceId], references: [id])
   priority    NotificationPriority
   category    NotificationCategory
-  type        String               // e.g. payment.failed, user.signup, deal.status.changed
+  type        String // e.g. payment.failed, user.signup, deal.status.changed
   title       String
   message     String               @db.Text
-  entityType  String?              // e.g. Buyer, Dealer, Deal, Auction, Affiliate, Payment
+  entityType  String? // e.g. Buyer, Dealer, Deal, Auction, Affiliate, Payment
   entityId    String?
-  ctaPath     String?              // e.g. /admin/deals/{id}
+  ctaPath     String? // e.g. /admin/deals/{id}
   metadata    Json?                @db.JsonB
   isRead      Boolean              @default(false)
   readAt      DateTime?
@@ -2220,22 +2220,22 @@ enum TransactionStatus {
 }
 
 model Transaction {
-  id                     String            @id @default(cuid())
-  stripePaymentIntentId  String?
-  stripeChargeId         String?
-  userId                 String?
-  userType               String?           // BUYER | DEALER | AFFILIATE
-  dealId                 String?
-  refinanceId            String?
-  type                   TransactionType
-  grossAmount            Float
-  stripeFee              Float             @default(0)
-  platformFee            Float             @default(0)
-  netAmount              Float
-  currency               String            @default("usd")
-  status                 TransactionStatus @default(PENDING)
-  createdAt              DateTime          @default(now())
-  updatedAt              DateTime          @updatedAt
+  id                    String            @id @default(cuid())
+  stripePaymentIntentId String?
+  stripeChargeId        String?
+  userId                String?
+  userType              String? // BUYER | DEALER | AFFILIATE
+  dealId                String?
+  refinanceId           String?
+  type                  TransactionType
+  grossAmount           Float
+  stripeFee             Float             @default(0)
+  platformFee           Float             @default(0)
+  netAmount             Float
+  currency              String            @default("usd")
+  status                TransactionStatus @default(PENDING)
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
 
   // Workspace / tenant isolation
   workspaceId String?
@@ -2252,13 +2252,13 @@ model Transaction {
 }
 
 model Chargeback {
-  id               String   @id @default(cuid())
-  transactionId    String
-  transaction      Transaction @relation(fields: [transactionId], references: [id])
-  stripeDisputeId  String?
-  amount           Float
-  status           String   @default("OPEN") // OPEN | WON | LOST
-  createdAt        DateTime @default(now())
+  id              String      @id @default(cuid())
+  transactionId   String
+  transaction     Transaction @relation(fields: [transactionId], references: [id])
+  stripeDisputeId String?
+  amount          Float
+  status          String      @default("OPEN") // OPEN | WON | LOST
+  createdAt       DateTime    @default(now())
 
   // Workspace / tenant isolation
   workspaceId String?
@@ -2295,8 +2295,8 @@ model FinancialAuditLog {
 model AiConversation {
   id        String   @id @default(cuid())
   userId    String?
-  role      String   // public | buyer | dealer | affiliate | admin
-  agent     String   // SalesAgent | BuyerConciergeAgent | etc.
+  role      String // public | buyer | dealer | affiliate | admin
+  agent     String // SalesAgent | BuyerConciergeAgent | etc.
   intent    String?
   createdAt DateTime @default(now())
 
@@ -2314,10 +2314,10 @@ model AiConversation {
 model AiMessage {
   id             String   @id @default(cuid())
   conversationId String
-  sender         String   // user | assistant | system | tool
+  sender         String // user | assistant | system | tool
   content        String   @db.Text
   toolUsed       String?
-  riskLevel      String?  // low | medium | high
+  riskLevel      String? // low | medium | high
   createdAt      DateTime @default(now())
 
   conversation AiConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
@@ -2329,7 +2329,7 @@ model AiMessage {
 model AiAdminAction {
   id         String   @id @default(cuid())
   adminId    String
-  actionType String   // takeover | resume_ai | disable_ai | enable_ai | manual_reply
+  actionType String // takeover | resume_ai | disable_ai | enable_ai | manual_reply
   payload    Json?    @db.JsonB
   createdAt  DateTime @default(now())
 
@@ -2348,7 +2348,7 @@ model AiToolCall {
   toolName       String
   input          Json     @db.JsonB
   output         Json?    @db.JsonB
-  status         String   // success | error | denied
+  status         String // success | error | denied
   latencyMs      Int
   error          String?  @db.Text
   userId         String?
@@ -2368,7 +2368,7 @@ model AiLead {
   name           String
   email          String
   phone          String?
-  intent         String?  // buy | refinance | dealer | affiliate
+  intent         String? // buy | refinance | dealer | affiliate
   source         String?  @default("chat")
   conversationId String?
   createdAt      DateTime @default(now())
@@ -2552,15 +2552,15 @@ enum LenderDisbursementStatus {
 }
 
 model DealerCoverageGapSignal {
-  id          String   @id @default(cuid())
+  id          String     @id @default(cuid())
   workspaceId String?
   workspace   Workspace? @relation(fields: [workspaceId], references: [id])
   buyerId     String
   marketZip   String
-  radiusMiles Int      @default(50)
+  radiusMiles Int        @default(50)
   reasonCode  String
   resolvedAt  DateTime?
-  createdAt   DateTime @default(now())
+  createdAt   DateTime   @default(now())
 
   @@index([workspaceId])
   @@index([buyerId])
@@ -2569,18 +2569,18 @@ model DealerCoverageGapSignal {
 }
 
 model VehicleRequestCase {
-  id          String   @id @default(cuid())
-  workspaceId String?
-  workspace   Workspace? @relation(fields: [workspaceId], references: [id])
-  buyerId     String
-  buyer       BuyerProfile @relation(fields: [buyerId], references: [id], onDelete: Cascade)
-  marketZip   String
-  radiusMiles Int      @default(50)
-  buyerLocationJson  Json?
+  id                  String       @id @default(cuid())
+  workspaceId         String?
+  workspace           Workspace?   @relation(fields: [workspaceId], references: [id])
+  buyerId             String
+  buyer               BuyerProfile @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  marketZip           String
+  radiusMiles         Int          @default(50)
+  buyerLocationJson   Json?
   prequalSnapshotJson Json?
 
-  status         BuyerCaseStatus @default(DRAFT)
-  adminSubStatus AdminSubStatus  @default(NEW)
+  status              BuyerCaseStatus @default(DRAFT)
+  adminSubStatus      AdminSubStatus  @default(NEW)
   assignedAdminUserId String?
 
   createdAt          DateTime  @default(now())
@@ -2609,7 +2609,7 @@ model VehicleRequestCase {
 }
 
 model VehicleRequestItem {
-  id     String @id @default(cuid())
+  id     String             @id @default(cuid())
   caseId String
   case   VehicleRequestCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
 
@@ -2619,23 +2619,23 @@ model VehicleRequestItem {
   yearMax       Int
   make          String
   model         String?
-  openToSimilar Boolean @default(false)
+  openToSimilar Boolean          @default(false)
   trim          String?
 
-  budgetType        BudgetType
-  budgetTargetCents Int
+  budgetType              BudgetType
+  budgetTargetCents       Int
   maxTotalOtdBudgetCents  Int?
   maxMonthlyPaymentCents  Int?
   desiredDownPaymentCents Int?
 
-  mileageMax            Int?
-  mustHaveFeaturesJson  Json?
-  colorsJson            Json?
-  distancePreference    DistancePreference @default(EITHER)
-  maxDistanceMiles      Int?
-  timeline              RequestTimeline @default(FIFTEEN_30_DAYS)
-  vin                   String?
-  notes                 String? @db.Text
+  mileageMax           Int?
+  mustHaveFeaturesJson Json?
+  colorsJson           Json?
+  distancePreference   DistancePreference @default(EITHER)
+  maxDistanceMiles     Int?
+  timeline             RequestTimeline    @default(FIFTEEN_30_DAYS)
+  vin                  String?
+  notes                String?            @db.Text
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -2644,7 +2644,7 @@ model VehicleRequestItem {
 }
 
 model SourcingOutreachLog {
-  id          String @id @default(cuid())
+  id          String             @id @default(cuid())
   caseId      String
   case        VehicleRequestCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
   adminUserId String
@@ -2662,9 +2662,9 @@ model SourcingOutreachLog {
 }
 
 model SourcedOffer {
-  id          String   @id @default(cuid())
+  id          String             @id @default(cuid())
   workspaceId String?
-  workspace   Workspace? @relation(fields: [workspaceId], references: [id])
+  workspace   Workspace?         @relation(fields: [workspaceId], references: [id])
   caseId      String
   case        VehicleRequestCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
   buyerId     String
@@ -2686,10 +2686,10 @@ model SourcedOffer {
   pricingBreakdownJson Json?
   paymentTermsJson     Json?
 
-  expiresAt           DateTime?
-  status              SourcedOfferStatus @default(DRAFT)
-  presentedToBuyerAt  DateTime?
-  acceptedAt          DateTime?
+  expiresAt          DateTime?
+  status             SourcedOfferStatus @default(DRAFT)
+  presentedToBuyerAt DateTime?
+  acceptedAt         DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -2705,11 +2705,11 @@ model SourcedOffer {
 }
 
 model DealerInvite {
-  id      String @id @default(cuid())
-  caseId  String @unique
+  id      String             @id @default(cuid())
+  caseId  String             @unique
   case    VehicleRequestCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
-  offerId String @unique
-  offer   SourcedOffer @relation(fields: [offerId], references: [id], onDelete: Cascade)
+  offerId String             @unique
+  offer   SourcedOffer       @relation(fields: [offerId], references: [id], onDelete: Cascade)
 
   tokenHash      String   @unique
   tokenExpiresAt DateTime
@@ -2725,7 +2725,7 @@ model DealerInvite {
 }
 
 model CaseEventLog {
-  id     String @id @default(cuid())
+  id     String             @id @default(cuid())
   caseId String
   case   VehicleRequestCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
 
@@ -2743,13 +2743,13 @@ model CaseEventLog {
 }
 
 model CaseNote {
-  id     String @id @default(cuid())
+  id     String             @id @default(cuid())
   caseId String
   case   VehicleRequestCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
 
   authorUserId String
   authorRole   String
-  content      String @db.Text
+  content      String  @db.Text
   isInternal   Boolean @default(true)
 
   createdAt DateTime @default(now())
@@ -2790,19 +2790,19 @@ model EmailSendLog {
 /// Versioned consent form text. Each version is immutable after creation.
 /// The exact web-based UX must be exportable for MicroBilt review/approval.
 model PrequalConsentVersion {
-  id        String   @id @default(cuid())
-  version   String   @unique  // e.g. "1.0.0", "1.1.0"
-  bodyText  String   @db.Text // Full consent language
-  consentText String? @db.Text // Migration alias — new code reads this; bodyText is the source of truth
-  htmlHash    String?          // Hash of the HTML consent form rendered to user
-  active      Boolean @default(false) // Whether this version is the current active consent
+  id          String    @id @default(cuid())
+  version     String    @unique // e.g. "1.0.0", "1.1.0"
+  bodyText    String    @db.Text // Full consent language
+  consentText String?   @db.Text // Migration alias — new code reads this; bodyText is the source of truth
+  htmlHash    String? // Hash of the HTML consent form rendered to user
+  active      Boolean   @default(false) // Whether this version is the current active consent
   effectiveAt DateTime
   retiredAt   DateTime?
-  createdBy   String?         // admin userId who published this version
+  createdBy   String? // admin userId who published this version
   approvedAt  DateTime?
   approvedBy  String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   artifacts PrequalConsentArtifact[]
 
@@ -2813,27 +2813,27 @@ model PrequalConsentVersion {
 /// Immutable record of consumer's written-instruction consent.
 /// Retained for FCRA compliance; linked to the consent version shown.
 model PrequalConsentArtifact {
-  id              String   @id @default(cuid())
-  userId          String
+  id               String                @id @default(cuid())
+  userId           String
   consentVersionId String
-  consentVersion  PrequalConsentVersion @relation(fields: [consentVersionId], references: [id])
+  consentVersion   PrequalConsentVersion @relation(fields: [consentVersionId], references: [id])
 
-  consentText     String   @db.Text   // Exact text shown at time of consent
-  renderedText    String?  @db.Text   // Migration alias — new code writes this; consentText is the source of truth
-  htmlHash        String?             // Hash of the rendered HTML
+  consentText     String                @db.Text // Exact text shown at time of consent
+  renderedText    String?               @db.Text // Migration alias — new code writes this; consentText is the source of truth
+  htmlHash        String? // Hash of the rendered HTML
   consentGiven    Boolean
   consentDate     DateTime
   captureMethod   ConsentCaptureMethod? @default(WEB) // How consent was captured
   acceptedAt      DateTime?
   ipAddress       String?
   userAgent       String?
-  fingerprintHash String?             // Optional browser fingerprint
+  fingerprintHash String? // Optional browser fingerprint
 
-  sessionId       String?             // Link to PrequalSession if available
-  reproducibleStorageUrl String?      // URL to reproducible storage of consent
-  retentionLocked Boolean  @default(true) // Whether this artifact is locked for retention
+  sessionId              String? // Link to PrequalSession if available
+  reproducibleStorageUrl String? // URL to reproducible storage of consent
+  retentionLocked        Boolean @default(true) // Whether this artifact is locked for retention
 
-  createdAt       DateTime @default(now())
+  createdAt DateTime @default(now())
 
   preQualifications PreQualification[]
 
@@ -2845,22 +2845,22 @@ model PrequalConsentArtifact {
 /// Separate affirmative authorization for forwarding consumer-supplied data
 /// to third parties (e.g. lenders). Required before any data forwarding.
 model ConsumerAuthorizationArtifact {
-  id              String   @id @default(cuid())
-  userId          String
-  authorizationType String  // e.g. "DATA_FORWARDING", "THIRD_PARTY_SHARING"
-  authorized      Boolean
-  authorizationText String @db.Text // Exact text shown
-  authorizedParties String[]        // List of authorized third-party names
-  recipientDescription String?      // Who data would be forwarded to
-  ipAddress       String?
-  userAgent       String?
-  authorizedAt    DateTime
-  acceptedAt      DateTime?
-  retentionLocked Boolean  @default(true) // Whether this artifact is locked for retention
+  id                   String    @id @default(cuid())
+  userId               String
+  authorizationType    String // e.g. "DATA_FORWARDING", "THIRD_PARTY_SHARING"
+  authorized           Boolean
+  authorizationText    String    @db.Text // Exact text shown
+  authorizedParties    String[] // List of authorized third-party names
+  recipientDescription String? // Who data would be forwarded to
+  ipAddress            String?
+  userAgent            String?
+  authorizedAt         DateTime
+  acceptedAt           DateTime?
+  retentionLocked      Boolean   @default(true) // Whether this artifact is locked for retention
 
-  sessionId       String?            // Link to PrequalSession if available
+  sessionId String? // Link to PrequalSession if available
 
-  createdAt       DateTime @default(now())
+  createdAt DateTime @default(now())
 
   preQualifications PreQualification[]
 
@@ -2872,32 +2872,32 @@ model ConsumerAuthorizationArtifact {
 /// Tracks a complete prequalification session lifecycle.
 /// Links consent artifacts, provider events, and results.
 model PrequalSession {
-  id              String   @id @default(cuid())
-  userId          String
-  workspaceId     String?
+  id          String  @id @default(cuid())
+  userId      String
+  workspaceId String?
 
-  status          String   @default("INITIATED") // INITIATED, CONSENT_CAPTURED, PROCESSING, COMPLETED, FAILED, EXPIRED
-  sourceType      String   @default("INTERNAL")  // INTERNAL, MICROBILT, IPREDICT
+  status     String @default("INITIATED") // INITIATED, CONSENT_CAPTURED, PROCESSING, COMPLETED, FAILED, EXPIRED
+  sourceType String @default("INTERNAL") // INTERNAL, MICROBILT, IPREDICT
 
-  prequalificationId String?  // FK to resulting PreQualification (set after completion)
+  prequalificationId String? // FK to resulting PreQualification (set after completion)
 
-  consentArtifactId            String?  // FK to written-instruction consent
-  forwardingAuthorizationId    String?  // FK to forwarding authorization (if applicable)
+  consentArtifactId         String? // FK to written-instruction consent
+  forwardingAuthorizationId String? // FK to forwarding authorization (if applicable)
 
-  ipAddress       String?
-  userAgent       String?
-  startedAt       DateTime?
+  ipAddress String?
+  userAgent String?
+  startedAt DateTime?
 
-  providerRequestedAt  DateTime?
-  providerRespondedAt  DateTime?
+  providerRequestedAt DateTime?
+  providerRespondedAt DateTime?
 
-  expiresAt       DateTime?
-  completedAt     DateTime?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  expiresAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
-  preQualification PreQualification? @relation(fields: [prequalificationId], references: [id])
-  providerEvents  PrequalProviderEvent[]
+  preQualification PreQualification?      @relation(fields: [prequalificationId], references: [id])
+  providerEvents   PrequalProviderEvent[]
 
   @@index([userId])
   @@index([status])
@@ -2908,27 +2908,27 @@ model PrequalSession {
 /// Audit-linked record of every provider request/response pair.
 /// Stores raw payloads for compliance evidence.
 model PrequalProviderEvent {
-  id                  String   @id @default(cuid())
-  sessionId           String
-  session             PrequalSession @relation(fields: [sessionId], references: [id])
+  id        String         @id @default(cuid())
+  sessionId String
+  session   PrequalSession @relation(fields: [sessionId], references: [id])
 
-  userId              String
-  prequalificationId  String?
+  userId             String
+  prequalificationId String?
 
-  providerName        String   // "MicroBilt", "iPredict", "AutoLenisPrequal"
-  eventType           String   // "PREQUALIFY", "RISK_SCORE", "REFRESH"
+  providerName        String // "MicroBilt", "iPredict", "AutoLenisPrequal"
+  eventType           String // "PREQUALIFY", "RISK_SCORE", "REFRESH"
   requestPayload      Json?
   responsePayload     Json?
-  requestPayloadJson  Json?    // Migration alias for requestPayload
-  responsePayloadJson Json?    // Migration alias for responsePayload
-  responseStatus      String   // "SUCCESS", "ERROR", "TIMEOUT"
+  requestPayloadJson  Json? // Migration alias for requestPayload
+  responsePayloadJson Json? // Migration alias for responsePayload
+  responseStatus      String // "SUCCESS", "ERROR", "TIMEOUT"
   errorMessage        String?
   errorCode           String?
   latencyMs           Int?
 
-  createdAt           DateTime @default(now())
+  createdAt DateTime @default(now())
 
-  preQualification    PreQualification? @relation(fields: [prequalificationId], references: [id])
+  preQualification PreQualification? @relation(fields: [prequalificationId], references: [id])
 
   @@index([sessionId])
   @@index([userId])
@@ -2940,21 +2940,21 @@ model PrequalProviderEvent {
 /// Logs the permissible purpose for each credit inquiry.
 /// Required for FCRA compliance.
 model PermissiblePurposeLog {
-  id                  String   @id @default(cuid())
-  userId              String
-  sessionId           String?
-  prequalificationId  String?
+  id                 String  @id @default(cuid())
+  userId             String
+  sessionId          String?
+  prequalificationId String?
 
-  permissiblePurpose  String   // e.g. "WRITTEN_INSTRUCTIONS_OF_CONSUMER"
-  purpose             String?  // Migration alias for permissiblePurpose
-  purposeDescription  String   @db.Text
-  providerName        String
-  provider            String?  // Migration alias for providerName
-  inquiryType         String   // "SOFT_PULL", "HARD_PULL"
-  requestReference    String?  // External reference/tracking ID
-  certifiedBy         String?  // System or admin userId
+  permissiblePurpose String // e.g. "WRITTEN_INSTRUCTIONS_OF_CONSUMER"
+  purpose            String? // Migration alias for permissiblePurpose
+  purposeDescription String  @db.Text
+  providerName       String
+  provider           String? // Migration alias for providerName
+  inquiryType        String // "SOFT_PULL", "HARD_PULL"
+  requestReference   String? // External reference/tracking ID
+  certifiedBy        String? // System or admin userId
 
-  createdAt           DateTime @default(now())
+  createdAt DateTime @default(now())
 
   @@index([userId])
   @@index([sessionId])
@@ -2963,93 +2963,753 @@ model PermissiblePurposeLog {
 
 /// Snapshot of offers presented to consumer from prequal results.
 model PrequalOfferSnapshot {
-  id                  String   @id @default(cuid())
-  preQualificationId  String
-  offerJson           Json
-  presentedAt         DateTime @default(now())
-  createdAt           DateTime @default(now())
+  id                 String   @id @default(cuid())
+  preQualificationId String
+  offerJson          Json
+  presentedAt        DateTime @default(now())
+  createdAt          DateTime @default(now())
 
-  preQualification    PreQualification @relation(fields: [preQualificationId], references: [id])
+  preQualification PreQualification @relation(fields: [preQualificationId], references: [id])
 
   @@index([preQualificationId])
 }
 
 // ============================================
-// IN-APP BUYER ↔ DEALER MESSAGING
+// INVENTORY INTELLIGENCE SUBSYSTEM
 // ============================================
 
-enum MessageThreadStatus {
+enum DealerProspectStatus {
+  DISCOVERED
+  CONTACTED
+  RESPONDED
+  ONBOARDING
+  CONVERTED
+  REJECTED
+  SUPPRESSED
+}
+
+enum DealerSourceType {
+  WEBSITE
+  FEED
+  API
+  MANUAL
+}
+
+enum DealerSourceStatus {
   ACTIVE
-  CLOSED
-  ARCHIVED
+  PAUSED
+  ERRORED
+  SUPPRESSED
 }
 
-enum ApprovalType {
-  autolenis
-  external
-  cash
+enum SourceRunStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
 }
 
-enum SenderType {
-  BUYER
-  DEALER
-  SYSTEM
+enum MarketVehicleStatus {
+  ACTIVE
+  STALE
+  SUPPRESSED
+  PROMOTED
 }
 
-model MessageThread {
-  id                String              @id @default(cuid())
-  workspaceId       String?
-  buyerId           String
-  dealerId          String
-  requestId         String?
-  dealId            String?
-  approvalType      ApprovalType
-  identityReleased  Boolean             @default(false)
-  status            MessageThreadStatus @default(ACTIVE)
-  createdAt         DateTime            @default(now())
-  updatedAt         DateTime            @updatedAt
+enum VerifiedVehicleStatus {
+  AVAILABLE
+  HOLD
+  SOLD
+  REMOVED
+}
 
-  messages          Message[]
+enum InventoryMatchStatus {
+  PENDING
+  MATCHED
+  INVITED
+  OFFER_RECEIVED
+  EXPIRED
+}
 
+enum CoverageGapStatus {
+  OPEN
+  INVITE_SENT
+  RESOLVED
+  DISMISSED
+}
+
+enum QuickOfferStatus {
+  PENDING
+  SUBMITTED
+  ACCEPTED
+  REJECTED
+  EXPIRED
+}
+
+enum IdentityState {
+  ANONYMOUS
+  CONDITIONAL_HOLD
+  RELEASED
+}
+
+enum AlertSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum AlertStatus {
+  OPEN
+  INVESTIGATING
+  RESOLVED
+  DISMISSED
+}
+
+enum JobStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  DEAD_LETTER
+}
+
+enum JobType {
+  DISCOVER_DEALER
+  FETCH_SOURCE
+  PARSE_SOURCE
+  NORMALIZE_SOURCE
+  DEDUPE_INVENTORY
+  REFRESH_SOURCE
+  STALE_SWEEP
+  GENERATE_DEALER_INVITES
+  PROCESS_QUICK_OFFER
+  PROMOTE_VERIFIED_INVENTORY
+  SCAN_CIRCUMVENTION_SIGNALS
+}
+
+model DealerProspect {
+  id          String  @id @default(cuid())
+  workspaceId String?
+
+  businessName String
+  phone        String?
+  email        String?
+  website      String?
+  address      String?
+  city         String?
+  state        String?
+  zip          String?
+
+  discoveredFrom String?
+  discoveredAt   DateTime @default(now())
+
+  status DealerProspectStatus @default(DISCOVERED)
+  notes  String?              @db.Text
+
+  convertedDealerId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sources         DealerSource[]
+  invites         DealerIntelligenceInvite[]
+  quickOffers     DealerQuickOffer[]
+  conversions     DealerOnboardingConversion[]
+  lifecycleEvents DealerLifecycleEvent[]
+
+  @@index([workspaceId])
+  @@index([status])
+  @@index([zip])
+  @@index([businessName])
+  @@index([convertedDealerId])
+}
+
+model DealerSource {
+  id          String  @id @default(cuid())
+  workspaceId String?
+
+  prospectId String?
+  prospect   DealerProspect? @relation(fields: [prospectId], references: [id], onDelete: SetNull)
+
+  dealerId String?
+
+  sourceType DealerSourceType
+  sourceUrl  String?
+  feedUrl    String?
+
+  status               DealerSourceStatus @default(ACTIVE)
+  lastFetchedAt        DateTime?
+  fetchIntervalMinutes Int                @default(1440)
+
+  errorCount       Int     @default(0)
+  lastErrorMessage String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  runs         DealerSourceRun[]
+  rawSnapshots InventoryRawSnapshot[]
+  sourceErrors InventorySourceError[]
+
+  @@index([workspaceId])
+  @@index([prospectId])
+  @@index([dealerId])
+  @@index([status])
+  @@index([sourceType])
+}
+
+model DealerSourceRun {
+  id       String       @id @default(cuid())
+  sourceId String
+  source   DealerSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  status          SourceRunStatus @default(PENDING)
+  startedAt       DateTime?
+  completedAt     DateTime?
+  vehiclesFound   Int             @default(0)
+  vehiclesNew     Int             @default(0)
+  vehiclesUpdated Int             @default(0)
+  errors          Int             @default(0)
+  errorDetails    Json?
+
+  createdAt DateTime @default(now())
+
+  @@index([sourceId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model InventoryRawSnapshot {
+  id       String       @id @default(cuid())
+  sourceId String
+  source   DealerSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  rawData    Json
+  fetchedAt  DateTime  @default(now())
+  parsedAt   DateTime?
+  parseError String?
+
+  createdAt DateTime @default(now())
+
+  sightings InventoryVehicleSighting[]
+
+  @@index([sourceId])
+  @@index([fetchedAt])
+}
+
+model InventoryVehicleSighting {
+  id         String               @id @default(cuid())
+  snapshotId String
+  snapshot   InventoryRawSnapshot @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
+
+  vin           String?
+  year          Int?
+  make          String?
+  model         String?
+  trim          String?
+  mileage       Int?
+  priceCents    Int?
+  exteriorColor String?
+  bodyStyle     String?
+  stockNumber   String?
+
+  rawJson Json?
+
+  firstSeenAt DateTime @default(now())
+  lastSeenAt  DateTime @default(now())
+
+  createdAt DateTime @default(now())
+
+  @@index([snapshotId])
+  @@index([vin])
+  @@index([make, model])
+}
+
+model InventoryMarketVehicle {
+  id          String  @id @default(cuid())
+  workspaceId String?
+
+  dealerSourceId String?
+  prospectId     String?
+
+  vin           String?
+  year          Int
+  make          String
+  model         String
+  trim          String?
+  bodyStyle     String?
+  mileage       Int?
+  priceCents    Int?
+  exteriorColor String?
+  interiorColor String?
+  transmission  String?
+  fuelType      String?
+  drivetrain    String?
+  engine        String?
+  images        String[]
+  stockNumber   String?
+  dealerName    String?
+  dealerZip     String?
+  dealerState   String?
+  listingUrl    String?
+
+  status      MarketVehicleStatus @default(ACTIVE)
+  confidence  Float               @default(0.5)
+  firstSeenAt DateTime            @default(now())
+  lastSeenAt  DateTime            @default(now())
+  staleAfter  DateTime?
+
+  promotedToVerifiedId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  priceHistory    InventoryPriceHistory[]
+  duplicateGroups InventoryDuplicateGroupMember[]
+  matches         BuyerRequestInventoryMatch[]
+
+  @@unique([vin, prospectId], name: "market_vin_prospect")
+  @@index([workspaceId])
+  @@index([status])
+  @@index([make, model])
+  @@index([dealerZip])
+  @@index([vin])
+  @@index([prospectId])
+  @@index([promotedToVerifiedId])
+}
+
+model InventoryVerifiedVehicle {
+  id          String  @id @default(cuid())
+  workspaceId String?
+
+  dealerId        String
+  vehicleId       String?
+  inventoryItemId String?
+
+  vin           String
+  year          Int
+  make          String
+  model         String
+  trim          String?
+  bodyStyle     String?
+  mileage       Int?
+  priceCents    Int?
+  exteriorColor String?
+  interiorColor String?
+  transmission  String?
+  fuelType      String?
+  drivetrain    String?
+  engine        String?
+  images        String[]
+  stockNumber   String?
+  location      String?
+  description   String?  @db.Text
+
+  status VerifiedVehicleStatus @default(AVAILABLE)
+
+  promotedFromMarketVehicleId String?
+  promotedAt                  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  priceHistory    InventoryPriceHistory[]
+  duplicateGroups InventoryDuplicateGroupMember[]
+  matches         BuyerRequestInventoryMatch[]
+
+  @@unique([vin, dealerId], name: "verified_vin_dealer")
+  @@index([workspaceId])
+  @@index([dealerId])
+  @@index([status])
+  @@index([make, model])
+  @@index([vin])
+  @@index([promotedFromMarketVehicleId])
+}
+
+model InventoryPriceHistory {
+  id                String                    @id @default(cuid())
+  marketVehicleId   String?
+  marketVehicle     InventoryMarketVehicle?   @relation(fields: [marketVehicleId], references: [id], onDelete: Cascade)
+  verifiedVehicleId String?
+  verifiedVehicle   InventoryVerifiedVehicle? @relation(fields: [verifiedVehicleId], references: [id], onDelete: Cascade)
+
+  priceCents Int
+  recordedAt DateTime @default(now())
+
+  @@index([marketVehicleId])
+  @@index([verifiedVehicleId])
+  @@index([recordedAt])
+}
+
+model InventoryDuplicateGroup {
+  id          String  @id @default(cuid())
+  workspaceId String?
+
+  vin        String?
+  status     String    @default("pending")
+  resolvedAt DateTime?
+  resolvedBy String?
+  resolution String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members InventoryDuplicateGroupMember[]
+
+  @@index([workspaceId])
+  @@index([vin])
+  @@index([status])
+}
+
+model InventoryDuplicateGroupMember {
+  id      String                  @id @default(cuid())
+  groupId String
+  group   InventoryDuplicateGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  marketVehicleId   String?
+  marketVehicle     InventoryMarketVehicle?   @relation(fields: [marketVehicleId], references: [id], onDelete: SetNull)
+  verifiedVehicleId String?
+  verifiedVehicle   InventoryVerifiedVehicle? @relation(fields: [verifiedVehicleId], references: [id], onDelete: SetNull)
+
+  isPrimary Boolean @default(false)
+
+  createdAt DateTime @default(now())
+
+  @@index([groupId])
+  @@index([marketVehicleId])
+  @@index([verifiedVehicleId])
+}
+
+model InventorySourceError {
+  id       String       @id @default(cuid())
+  sourceId String
+  source   DealerSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  errorType    String
+  errorMessage String   @db.Text
+  rawPayload   Json?
+  occurredAt   DateTime @default(now())
+
+  @@index([sourceId])
+  @@index([errorType])
+  @@index([occurredAt])
+}
+
+model BuyerRequestInventoryMatch {
+  id          String  @id @default(cuid())
+  workspaceId String?
+
+  buyerRequestId String?
+
+  marketVehicleId   String?
+  marketVehicle     InventoryMarketVehicle?   @relation(fields: [marketVehicleId], references: [id], onDelete: SetNull)
+  verifiedVehicleId String?
+  verifiedVehicle   InventoryVerifiedVehicle? @relation(fields: [verifiedVehicleId], references: [id], onDelete: SetNull)
+
+  coverageType String?
+  matchScore   Float                @default(0)
+  status       InventoryMatchStatus @default(PENDING)
+
+  auctionInvitationId String?
+  dealerInviteId      String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([workspaceId])
+  @@index([buyerRequestId])
+  @@index([marketVehicleId])
+  @@index([verifiedVehicleId])
+  @@index([status])
+}
+
+model CoverageGapTask {
+  id          String  @id @default(cuid())
+  workspaceId String?
+
+  buyerRequestId String?
+  marketZip      String
+  radiusMiles    Int     @default(50)
+  make           String?
+  model          String?
+  yearMin        Int?
+  yearMax        Int?
+
+  status     CoverageGapStatus @default(OPEN)
+  resolvedAt DateTime?
+  resolvedBy String?
+  resolution String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([workspaceId])
+  @@index([status])
+  @@index([marketZip])
+  @@index([buyerRequestId])
+}
+
+model DealerIntelligenceInvite {
+  id          String  @id @default(cuid())
+  workspaceId String?
+
+  prospectId String?
+  prospect   DealerProspect? @relation(fields: [prospectId], references: [id], onDelete: SetNull)
+  dealerId   String?
+
+  buyerRequestId    String?
+  coverageGapTaskId String?
+
+  tokenHash      String   @unique
+  tokenExpiresAt DateTime
+  dealerEmail    String?
+  dealerName     String?
+  dealerPhone    String?
+
+  status      String    @default("sent")
+  sentAt      DateTime  @default(now())
+  viewedAt    DateTime?
+  respondedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  quickOffers DealerQuickOffer[]
+
+  @@index([workspaceId])
+  @@index([prospectId])
+  @@index([dealerId])
+  @@index([tokenHash])
+  @@index([status])
+  @@index([buyerRequestId])
+}
+
+model DealerQuickOffer {
+  id          String  @id @default(cuid())
+  workspaceId String?
+
+  inviteId String
+  invite   DealerIntelligenceInvite @relation(fields: [inviteId], references: [id], onDelete: Cascade)
+
+  prospectId String?
+  prospect   DealerProspect? @relation(fields: [prospectId], references: [id], onDelete: SetNull)
+
+  vin            String?
+  year           Int?
+  make           String?
+  model          String?
+  trim           String?
+  mileage        Int?
+  priceCents     Int?
+  conditionNotes String?   @db.Text
+  availableDate  DateTime?
+  notes          String?   @db.Text
+
+  status     QuickOfferStatus @default(PENDING)
+  reviewedBy String?
+  reviewedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([workspaceId])
+  @@index([inviteId])
+  @@index([prospectId])
+  @@index([status])
+}
+
+model DealerOnboardingConversion {
+  id          String  @id @default(cuid())
+  workspaceId String?
+
+  prospectId String
+  prospect   DealerProspect @relation(fields: [prospectId], references: [id], onDelete: Cascade)
+
+  dealerId     String?
+  quickOfferId String?
+
+  status      String    @default("pending")
+  startedAt   DateTime  @default(now())
+  completedAt DateTime?
+
+  businessDocsUploaded Boolean @default(false)
+  agreementAccepted    Boolean @default(false)
+  operationalSetup     Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([workspaceId])
+  @@index([prospectId])
+  @@index([dealerId])
+  @@index([status])
+}
+
+model MaskedPartyProfile {
+  id          String  @id @default(cuid())
+  workspaceId String?
+
+  dealId     String?
+  buyerId    String?
+  dealerId   String?
+  prospectId String?
+
+  partyType   String
+  maskedId    String  @unique @default(cuid())
+  displayName String?
+
+  readinessPayload Json?
+
+  identityState IdentityState @default(ANONYMOUS)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([workspaceId])
+  @@index([dealId])
   @@index([buyerId])
   @@index([dealerId])
-  @@index([requestId])
-  @@index([dealId])
-  @@index([approvalType])
-  @@index([workspaceId])
-  @@map("message_threads")
+  @@index([maskedId])
+  @@index([identityState])
 }
 
-model Message {
-  id                    String   @id @default(cuid())
-  threadId              String
-  senderType            SenderType
-  senderId              String
-  body                  String   @db.Text
-  redactedBody          String   @db.Text
-  containsSensitiveData Boolean  @default(false)
-  circumventionScore    Float    @default(0)
-  createdAt             DateTime @default(now())
+model IdentityReleaseEvent {
+  id          String  @id @default(cuid())
+  workspaceId String?
 
-  thread                MessageThread          @relation(fields: [threadId], references: [id], onDelete: Cascade)
-  redactionEvents       MessageRedactionEvent[]
+  dealId   String
+  buyerId  String?
+  dealerId String?
 
-  @@index([threadId])
-  @@index([senderId])
+  previousState IdentityState
+  newState      IdentityState
+  reason        String?
+  triggeredBy   String?
+
+  releasedAt DateTime @default(now())
+
+  @@index([workspaceId])
+  @@index([dealId])
+  @@index([buyerId])
+  @@index([dealerId])
+  @@index([releasedAt])
+}
+
+model CircumventionAlert {
+  id          String  @id @default(cuid())
+  workspaceId String?
+
+  dealId    String?
+  buyerId   String?
+  dealerId  String?
+  messageId String?
+
+  alertType String
+  severity  AlertSeverity @default(MEDIUM)
+  status    AlertStatus   @default(OPEN)
+
+  description String?   @db.Text
+  evidence    Json?
+  resolvedBy  String?
+  resolvedAt  DateTime?
+  resolution  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([workspaceId])
+  @@index([dealId])
+  @@index([severity])
+  @@index([status])
   @@index([createdAt])
-  @@map("messages")
+}
+
+model DealProtectionEvent {
+  id          String  @id @default(cuid())
+  workspaceId String?
+
+  dealId      String
+  eventType   String
+  description String? @db.Text
+  metadata    Json?
+
+  createdAt DateTime @default(now())
+
+  @@index([workspaceId])
+  @@index([dealId])
+  @@index([eventType])
+  @@index([createdAt])
 }
 
 model MessageRedactionEvent {
-  id             String   @id @default(cuid())
-  messageId      String
-  detectionType  String
-  originalText   String   @db.Text
-  redactedText   String   @db.Text
-  createdAt      DateTime @default(now())
+  id          String  @id @default(cuid())
+  workspaceId String?
 
-  message        Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  messageId   String?
+  dealId      String?
+  senderId    String?
+  recipientId String?
 
+  originalContent String? @db.Text
+  redactedContent String? @db.Text
+  redactionType   String
+  patternsFound   Json?
+
+  createdAt DateTime @default(now())
+
+  @@index([workspaceId])
   @@index([messageId])
-  @@map("message_redaction_events")
+  @@index([dealId])
+  @@index([senderId])
+  @@index([createdAt])
+}
+
+model DealerLifecycleEvent {
+  id          String  @id @default(cuid())
+  workspaceId String?
+
+  prospectId String?
+  prospect   DealerProspect? @relation(fields: [prospectId], references: [id], onDelete: SetNull)
+  dealerId   String?
+
+  eventType   String
+  fromStatus  String?
+  toStatus    String?
+  metadata    Json?
+  performedBy String?
+
+  createdAt DateTime @default(now())
+
+  @@index([workspaceId])
+  @@index([prospectId])
+  @@index([dealerId])
+  @@index([eventType])
+  @@index([createdAt])
+}
+
+model InventoryIntelligenceJob {
+  id          String  @id @default(cuid())
+  workspaceId String?
+
+  jobType        JobType
+  status         JobStatus @default(PENDING)
+  payload        Json?
+  result         Json?
+  errorMessage   String?
+  attempts       Int       @default(0)
+  maxAttempts    Int       @default(3)
+  scheduledAt    DateTime  @default(now())
+  startedAt      DateTime?
+  completedAt    DateTime?
+  deadLetteredAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([workspaceId])
+  @@index([jobType])
+  @@index([status])
+  @@index([scheduledAt])
+  @@index([createdAt])
 }

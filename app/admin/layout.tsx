@@ -31,7 +31,13 @@ export default async function AdminLayout({
     return <>{children}</>
   }
 
-  const user = await getSessionUser()
+  let user
+  try {
+    user = await getSessionUser()
+  } catch (error) {
+    console.error("[AdminLayout] Session resolution failed:", error)
+    redirect("/admin/sign-in")
+  }
 
   if (!user || !["ADMIN", "SUPER_ADMIN"].includes(user.role)) {
     redirect("/admin/sign-in")
@@ -90,6 +96,18 @@ export default async function AdminLayout({
         { href: "/admin/documents", label: "Documents", icon: "FileCheck" },
         { href: "/admin/audit-logs", label: "Audit Logs", icon: "ScrollText" },
         { href: "/admin/compliance", label: "Risk", icon: "FileWarning" },
+      ],
+    },
+    {
+      label: "Inventory Intelligence",
+      items: [
+        { href: "/admin/dealer-intelligence", label: "Dealer Intelligence", icon: "Radar" },
+        { href: "/admin/inventory/sources", label: "Inventory Sources", icon: "Database" },
+        { href: "/admin/inventory/market", label: "Market Inventory", icon: "Globe" },
+        { href: "/admin/inventory/verified", label: "Verified Inventory", icon: "ShieldCheck" },
+        { href: "/admin/coverage-gaps", label: "Coverage Gaps", icon: "MapPin" },
+        { href: "/admin/dealer-invites", label: "Dealer Invites", icon: "Send" },
+        { href: "/admin/deal-protection", label: "Deal Protection", icon: "ShieldAlert" },
       ],
     },
     {

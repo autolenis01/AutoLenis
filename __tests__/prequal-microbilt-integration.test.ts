@@ -31,8 +31,8 @@ describe("PreQual Compliance — Consent Retention", () => {
   it("PrequalConsentVersion model exists in Prisma schema", () => {
     const schema = readSource("prisma/schema.prisma")
     expect(schema).toContain("model PrequalConsentVersion")
-    expect(schema).toContain("version   String   @unique")
-    expect(schema).toContain("bodyText  String")
+    expect(schema).toMatch(/version\s+String\s+@unique/)
+    expect(schema).toMatch(/bodyText\s+String/)
   })
 
   it("PrequalConsentArtifact model exists with required fields", () => {
