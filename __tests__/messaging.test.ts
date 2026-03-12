@@ -29,6 +29,8 @@ interface BuyerReadinessPayload {
 // Now includes:
 //   1. Status filtering — only ACTIVE or null prequals are considered
 //   2. For EXTERNAL_MANUAL, cross-validates the linked submission status
+//   3. Cash eligibility requires explicit platform basis (hasCashDeal),
+//      not just buyer profile existence
 function buildReadinessPayload(
   prequal: {
     source: string
@@ -40,13 +42,15 @@ function buildReadinessPayload(
     submissionStatus?: string | null // linked ExternalPreApprovalSubmission status
   } | null,
   buyerExists: boolean,
+  hasCashDeal?: boolean, // explicit cash-buyer basis: SelectedDeal with payment_type = 'CASH'
 ): { approvalType: ApprovalSource; readiness: BuyerReadinessPayload } | null {
   // Only consider prequals with status "ACTIVE" or null (backwards compat)
   if (prequal) {
     const validStatus = prequal.status === "ACTIVE" || prequal.status === null || prequal.status === undefined
     if (!validStatus) {
-      // Prequal has a terminal status (REVOKED, EXPIRED, FAILED, PENDING) — skip it
-      if (buyerExists) {
+      // Prequal has a terminal status (REVOKED, EXPIRED, FAILED, PENDING) — skip it.
+      // Cash eligibility still requires an explicit basis (hasCashDeal).
+      if (buyerExists && hasCashDeal) {
         return { approvalType: "cash", readiness: { approvalSource: "Cash Buyer", approvalType: "cash" } }
       }
       return null
@@ -100,7 +104,9 @@ function buildReadinessPayload(
     }
   }
 
-  if (buyerExists) {
+  // Cash eligibility requires an explicit platform basis — a SelectedDeal
+  // with payment_type = 'CASH'. Buyer profile existence alone is NOT sufficient.
+  if (buyerExists && hasCashDeal) {
     return {
       approvalType: "cash",
       readiness: {
@@ -231,12 +237,22 @@ describe("Messaging Service - Readiness Payload Builder", () => {
   })
 
   describe("Cash buyer", () => {
-    it("should build readiness for cash buyer (no prequal)", () => {
-      const result = buildReadinessPayload(null, true)
+    it("should build readiness for cash buyer with explicit cash deal basis", () => {
+      const result = buildReadinessPayload(null, true, true)
 
       expect(result!.approvalType).toBe("cash")
       expect(result!.readiness.approvalSource).toBe("Cash Buyer")
       expect(result!.readiness.maxBudget).toBeUndefined()
+    })
+
+    it("should deny cash eligibility when buyer has no explicit cash basis", () => {
+      const result = buildReadinessPayload(null, true, false)
+      expect(result).toBeNull()
+    })
+
+    it("should deny cash eligibility when buyer exists but hasCashDeal is not provided", () => {
+      const result = buildReadinessPayload(null, true)
+      expect(result).toBeNull()
     })
   })
 
@@ -304,7 +320,9 @@ describe("Messaging Service - Eligibility Validation", () => {
   })
 
   describe("Cash buyers", () => {
-    it("should always allow cash buyers", () => {
+    it("should allow cash buyer with valid cash approval basis", () => {
+      // This test validates that once approvalType=cash is resolved (with explicit basis),
+      // the eligibility validator correctly allows it
       const result = validateEligibility("cash", {
         approvalSource: "Cash Buyer",
         approvalType: "cash",
@@ -392,12 +410,12 @@ describe("Messaging Service - External Preapproval Integration", () => {
   })
 
   it("should treat all three approval types equally for messaging", () => {
-    // All three types should produce valid readiness payloads
+    // All three types should produce valid readiness payloads when properly qualified
     const futureDate = new Date(Date.now() + 86400000 * 30)
 
     const autolenis = buildReadinessPayload({ source: "INTERNAL", status: "ACTIVE", maxOtd: 50000, expiresAt: futureDate }, true)
     const external = buildReadinessPayload({ source: "EXTERNAL_MANUAL", status: "ACTIVE", maxOtd: 40000, expiresAt: futureDate, submissionStatus: "APPROVED" }, true)
-    const cash = buildReadinessPayload(null, true)
+    const cash = buildReadinessPayload(null, true, true) // explicit cash basis required
 
     expect(autolenis).not.toBeNull()
     expect(external).not.toBeNull()
@@ -487,44 +505,55 @@ describe("Messaging Service - External Preapproval Hardening", () => {
   })
 
   describe("Terminal prequal statuses block messaging resolution", () => {
-    it("should skip REVOKED prequal and fall to cash", () => {
+    it("should deny REVOKED prequal with no cash basis", () => {
       const futureDate = new Date(Date.now() + 86400000 * 30)
       const result = buildReadinessPayload(
         { source: "INTERNAL", status: "REVOKED", maxOtd: 50000, expiresAt: futureDate },
         true,
       )
 
+      expect(result).toBeNull()
+    })
+
+    it("should allow REVOKED prequal with explicit cash basis", () => {
+      const futureDate = new Date(Date.now() + 86400000 * 30)
+      const result = buildReadinessPayload(
+        { source: "INTERNAL", status: "REVOKED", maxOtd: 50000, expiresAt: futureDate },
+        true,
+        true,
+      )
+
       expect(result!.approvalType).toBe("cash")
     })
 
-    it("should skip EXPIRED prequal status and fall to cash", () => {
+    it("should deny EXPIRED prequal status with no cash basis", () => {
       const futureDate = new Date(Date.now() + 86400000 * 30)
       const result = buildReadinessPayload(
         { source: "INTERNAL", status: "EXPIRED", maxOtd: 50000, expiresAt: futureDate },
         true,
       )
 
-      expect(result!.approvalType).toBe("cash")
+      expect(result).toBeNull()
     })
 
-    it("should skip FAILED prequal and fall to cash", () => {
+    it("should deny FAILED prequal with no cash basis", () => {
       const futureDate = new Date(Date.now() + 86400000 * 30)
       const result = buildReadinessPayload(
         { source: "INTERNAL", status: "FAILED", maxOtd: 50000, expiresAt: futureDate },
         true,
       )
 
-      expect(result!.approvalType).toBe("cash")
+      expect(result).toBeNull()
     })
 
-    it("should skip PENDING prequal and fall to cash", () => {
+    it("should deny PENDING prequal with no cash basis", () => {
       const futureDate = new Date(Date.now() + 86400000 * 30)
       const result = buildReadinessPayload(
         { source: "EXTERNAL_MANUAL", status: "PENDING", maxOtd: 38000, expiresAt: futureDate, submissionStatus: "APPROVED" },
         true,
       )
 
-      expect(result!.approvalType).toBe("cash")
+      expect(result).toBeNull()
     })
   })
 
@@ -598,11 +627,16 @@ describe("Messaging Service - External Preapproval Hardening", () => {
       expect(resolved.approvalType).toBe("external")
     })
 
-    it("should allow messaging for true cash buyer (no prequal at all)", () => {
-      const resolved = buildReadinessPayload(null, true)!
+    it("should allow messaging for true cash buyer with explicit cash deal basis", () => {
+      const resolved = buildReadinessPayload(null, true, true)!
       const result = validateEligibility(resolved.approvalType, resolved.readiness)
       expect(result.eligible).toBe(true)
       expect(resolved.approvalType).toBe("cash")
+    })
+
+    it("should deny messaging for buyer with no prequal and no cash basis", () => {
+      const resolved = buildReadinessPayload(null, true, false)
+      expect(resolved).toBeNull() // no valid approval basis
     })
   })
 

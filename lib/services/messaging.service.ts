@@ -102,11 +102,15 @@ export class MessagingService {
   /**
    * Resolve a buyer's approval type from the database.
    * Checks PreQualification (autolenis/external) and ExternalPreApprovalSubmission.
-   * Falls back to cash if neither exists.
    *
    * Only uses prequals with status "ACTIVE" or null (for backwards compat).
    * For EXTERNAL_MANUAL source, cross-validates the linked ExternalPreApprovalSubmission
    * is still in APPROVED status — rejects stale prequals from rejected/superseded/expired submissions.
+   *
+   * Cash eligibility requires an explicit platform basis — a SelectedDeal with
+   * payment_type = 'CASH'. Buyer profile existence alone is NOT sufficient.
+   * This prevents unqualified buyers from becoming messaging-eligible merely
+   * because no prequal record was found.
    */
   async resolveBuyerApprovalType(buyerId: string): Promise<{
     approvalType: ApprovalSource
@@ -184,19 +188,29 @@ export class MessagingService {
       }
     }
 
-    // Check buyer profile for cash-buyer context (no prequalification record needed)
+    // Cash eligibility requires an explicit platform basis — a SelectedDeal
+    // with payment_type = 'CASH'. Buyer profile existence alone is NOT sufficient.
+    // This field is set via SQL migration and not in the Prisma schema, so we
+    // use a raw query to check it.
     const buyer = await prisma.buyerProfile.findUnique({ where: { id: buyerId } })
     if (buyer) {
-      return {
-        approvalType: "cash",
-        readiness: {
-          approvalSource: "Cash Buyer",
+      const cashDeals = await prisma.$queryRaw<Array<{ id: string }>>`
+        SELECT "id" FROM "SelectedDeal"
+        WHERE "buyerId" = ${buyerId} AND "payment_type" = 'CASH'
+        LIMIT 1
+      `
+      if (cashDeals.length > 0) {
+        return {
           approvalType: "cash",
-        },
+          readiness: {
+            approvalSource: "Cash Buyer",
+            approvalType: "cash",
+          },
+        }
       }
     }
 
-    // No valid buyer found
+    // No valid buyer found or no valid approval basis for messaging
     throw new Error("Buyer profile not found")
   }
 
