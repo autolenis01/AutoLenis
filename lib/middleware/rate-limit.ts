@@ -46,7 +46,9 @@ export async function rateLimit(request: NextRequest, config: RateLimitConfig): 
   try {
     assertProductionCacheReady()
   } catch {
-    if (process.env["NODE_ENV"] === "production") {
+    const isStrictProduction =
+      process.env["NODE_ENV"] === "production" && process.env["VERCEL_ENV"] !== "preview"
+    if (isStrictProduction) {
       if (securityCritical) {
         console.error("[RateLimit] CRITICAL: Redis unavailable in production for security-critical endpoint. Returning 503.")
         return NextResponse.json(
@@ -68,8 +70,12 @@ export async function rateLimit(request: NextRequest, config: RateLimitConfig): 
 
   const cache = getCacheAdapter()
 
-  // Production guard: refuse in-memory limiter in production for security-critical endpoints
-  if (process.env["NODE_ENV"] === "production" && cache instanceof InMemoryCacheAdapter) {
+  // Production guard: refuse in-memory limiter in production for security-critical endpoints.
+  // Vercel preview deployments (VERCEL_ENV=preview) are excluded — they may
+  // legitimately fall back to in-memory when Redis is not provisioned.
+  const isStrictProd =
+    process.env["NODE_ENV"] === "production" && process.env["VERCEL_ENV"] !== "preview"
+  if (isStrictProd && cache instanceof InMemoryCacheAdapter) {
     if (securityCritical) {
       console.error("[RateLimit] In-memory limiter detected in production for security-critical endpoint. Returning 503.")
       return NextResponse.json(

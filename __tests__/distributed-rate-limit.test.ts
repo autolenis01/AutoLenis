@@ -243,6 +243,25 @@ describe("Distributed Rate Limiting", () => {
       errorSpy.mockRestore()
     })
 
+    it("allows security-critical endpoints in Vercel preview without Redis", async () => {
+      vi.stubEnv("NODE_ENV", "production")
+      vi.stubEnv("VERCEL_ENV", "preview")
+      delete process.env["REDIS_URL"]
+      _resetCacheAdapter()
+
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+      const result = await rateLimit(createRequest("10.99.0.7"), {
+        maxRequests: 5,
+        windowMs: 60000,
+        securityCritical: true,
+      })
+
+      // In preview, security-critical endpoints should degrade to in-memory
+      // instead of returning 503
+      expect(result).toBeNull()
+      warnSpy.mockRestore()
+    })
+
     it("auth preset is marked securityCritical", () => {
       expect(rateLimits.auth.securityCritical).toBe(true)
     })
