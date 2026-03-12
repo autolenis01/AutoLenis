@@ -31,7 +31,13 @@ export default async function AdminLayout({
     return <>{children}</>
   }
 
-  const user = await getSessionUser()
+  let user
+  try {
+    user = await getSessionUser()
+  } catch (error) {
+    console.error("[AdminLayout] Session resolution failed:", error)
+    redirect("/admin/sign-in")
+  }
 
   if (!user || !["ADMIN", "SUPER_ADMIN"].includes(user.role)) {
     redirect("/admin/sign-in")

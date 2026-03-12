@@ -7,7 +7,13 @@ import type { PortalLink } from "@/components/portal-switcher"
 import ChatWidget from "@/components/ai/chat-widget"
 
 export default async function BuyerLayout({ children }: { children: React.ReactNode }) {
-  const user = await getSessionUser()
+  let user
+  try {
+    user = await getSessionUser()
+  } catch (error) {
+    console.error("[BuyerLayout] Session resolution failed:", error)
+    redirect("/auth/signin")
+  }
 
   if (!user || user.role !== "BUYER") {
     redirect("/auth/signin")
