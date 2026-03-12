@@ -92,6 +92,18 @@ export default async function AdminLayout({
       ],
     },
     {
+      label: "Inventory Intelligence",
+      items: [
+        { href: "/admin/dealer-intelligence", label: "Dealer Intelligence", icon: "Radar" },
+        { href: "/admin/inventory/sources", label: "Inventory Sources", icon: "Database" },
+        { href: "/admin/inventory/market", label: "Market Inventory", icon: "Globe" },
+        { href: "/admin/inventory/verified", label: "Verified Inventory", icon: "ShieldCheck" },
+        { href: "/admin/coverage-gaps", label: "Coverage Gaps", icon: "MapPin" },
+        { href: "/admin/dealer-invites", label: "Dealer Invites", icon: "Send" },
+        { href: "/admin/deal-protection", label: "Deal Protection", icon: "ShieldAlert" },
+      ],
+    },
+    {
       label: "Intelligence",
       items: [
         { href: "/admin/reports", label: "Funnel Reporting", icon: "TrendingUp" },

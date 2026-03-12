@@ -3,11 +3,12 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import useSWR from "swr"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Badge } from "@/components/ui/badge"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Package, Plus, Search, MoreVertical, Edit, Trash2, Eye, AlertCircle, Upload } from "lucide-react"
+import { Package, Plus, Search, MoreVertical, Edit, Trash2, Eye, AlertCircle, Upload, Sparkles, CheckCircle2, XCircle } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { csrfHeaders } from "@/lib/csrf-client"
 
@@ -21,6 +22,11 @@ export default function DealerInventoryPage() {
 
   const { data, error, isLoading, mutate } = useSWR("/api/dealer/inventory", fetcher, {
     refreshInterval: 30000,
+  })
+
+  // Fetch suggested inventory from market intelligence
+  const { data: suggestedData, mutate: mutateSuggested } = useSWR("/api/dealer/inventory/suggested", fetcher, {
+    refreshInterval: 60000,
   })
 
   const handleDelete = async (id: string) => {
@@ -42,7 +48,44 @@ export default function DealerInventoryPage() {
     }
   }
 
+  const handleConfirmSuggested = async (vehicleId: string) => {
+    try {
+      const res = await fetch(`/api/dealer/inventory/suggested/${vehicleId}/confirm`, {
+        method: "POST",
+        headers: csrfHeaders(),
+      })
+      if (res.ok) {
+        toast({ title: "Vehicle confirmed and added to inventory" })
+        mutate()
+        mutateSuggested()
+      } else {
+        throw new Error("Failed to confirm")
+      }
+    } catch {
+      toast({ variant: "destructive", title: "Failed to confirm vehicle" })
+    }
+  }
+
+  const handleRejectSuggested = async (vehicleId: string) => {
+    try {
+      const res = await fetch(`/api/dealer/inventory/suggested/${vehicleId}/reject`, {
+        method: "POST",
+        headers: csrfHeaders(),
+      })
+      if (res.ok) {
+        toast({ title: "Suggestion dismissed" })
+        mutateSuggested()
+      } else {
+        throw new Error("Failed to reject")
+      }
+    } catch {
+      toast({ variant: "destructive", title: "Failed to dismiss suggestion" })
+    }
+  }
+
   const inventory = data?.inventory || []
+  const suggestedVehicles = suggestedData?.success ? (suggestedData?.data?.vehicles || suggestedData?.vehicles || []) : []
+
   const filteredInventory = inventory.filter((item: any) => {
     const vehicle = item.vehicle
     const searchLower = search.toLowerCase()
@@ -117,6 +160,59 @@ export default function DealerInventoryPage() {
           </Button>
         </div>
       </div>
+
+      {/* Suggested Inventory from Market Intelligence */}
+      {suggestedVehicles.length > 0 && (
+        <Card className="border-blue-200 bg-blue-50/50 dark:bg-blue-950/10">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-blue-600" />
+              Suggested Inventory
+              <Badge variant="secondary">{suggestedVehicles.length}</Badge>
+            </CardTitle>
+            <CardDescription>
+              These vehicles were discovered from market sources and may match your dealership. Confirm to add them to your verified inventory.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {suggestedVehicles.slice(0, 5).map((v: any) => (
+                <div key={v.id} className="flex items-center justify-between p-3 bg-white dark:bg-background rounded-lg border">
+                  <div className="flex-1">
+                    <p className="font-medium">
+                      {v.year} {v.make} {v.model} {v.trim || ""}
+                    </p>
+                    <div className="flex gap-3 text-sm text-muted-foreground">
+                      {v.vin && <span className="font-mono">{v.vin}</span>}
+                      {v.mileage && <span>{Number(v.mileage).toLocaleString()} mi</span>}
+                      {v.priceCents && <span>${(v.priceCents / 100).toLocaleString()}</span>}
+                    </div>
+                  </div>
+                  <div className="flex gap-2 ml-4">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-green-700 border-green-300 hover:bg-green-50"
+                      onClick={() => handleConfirmSuggested(v.id)}
+                    >
+                      <CheckCircle2 className="h-4 w-4 mr-1" />
+                      Confirm
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-muted-foreground"
+                      onClick={() => handleRejectSuggested(v.id)}
+                    >
+                      <XCircle className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Search */}
       <div className="relative">
@@ -226,4 +322,5 @@ export default function DealerInventoryPage() {
       </Card>
     </div>
   )
+}
 }
