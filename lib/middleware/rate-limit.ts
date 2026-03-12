@@ -4,9 +4,8 @@
 // Uses the CacheAdapter abstraction so rate-limit state is shared across
 // serverless instances when a Redis-backed adapter is configured (REDIS_URL).
 //
-// Production policy: Redis is strongly recommended. When Redis is unavailable,
-// rate limiting degrades to in-memory with a CRITICAL warning. A total outage
-// (503 for every request) is worse than degraded per-instance rate limiting.
+// Production policy: rate limiting requires Redis. In-memory fallback is
+// allowed only in test/local environments.
 
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
@@ -17,10 +16,9 @@ export interface RateLimitConfig {
   windowMs: number
   keyGenerator?: (request: NextRequest) => string
   /**
-   * When true, the rate limiter logs a CRITICAL warning if Redis is
-   * unavailable in production and degrades to in-memory rate limiting.
-   * This prevents a total authentication outage while still providing
-   * per-instance protection.
+   * When true, the rate limiter will fail closed (return 503) if Redis is
+   * unavailable in production. Use for security-critical auth endpoints
+   * where in-memory fallback would allow bypass across instances.
    */
   securityCritical?: boolean
 }
@@ -47,18 +45,24 @@ export async function rateLimit(request: NextRequest, config: RateLimitConfig): 
   const isStrictProduction =
     process.env["NODE_ENV"] === "production" && process.env["VERCEL_ENV"] !== "preview"
 
-  // In production, warn loudly when Redis is unavailable but degrade to
-  // in-memory rate limiting instead of blocking all requests with 503.
-  // A total authentication outage is worse than degraded rate limiting.
+  // In production, enforce Redis availability for rate limiting.
+  // Security-critical endpoints (auth flows) fail closed with 503;
+  // non-critical endpoints degrade to in-memory with a warning.
   try {
     assertProductionCacheReady()
   } catch {
     if (isStrictProduction) {
       if (securityCritical) {
-        console.error("[RateLimit] CRITICAL: Redis unavailable in production for security-critical endpoint. Degrading to in-memory rate limiting. Configure REDIS_URL to restore full protection.")
-      } else {
-        console.error("[RateLimit] Redis unavailable in production — rate limiting degraded to in-memory. Configure REDIS_URL to restore full protection.")
+        console.error("[RateLimit] CRITICAL: Redis unavailable in production for security-critical endpoint. Returning 503.")
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Service temporarily unavailable. Please try again later.",
+          },
+          { status: 503, headers: { "Retry-After": "30" } },
+        )
       }
+      console.error("[RateLimit] CRITICAL: Redis unavailable in production — rate limiting degraded to in-memory. Configure REDIS_URL to restore full protection.")
     }
   }
 
@@ -69,15 +73,22 @@ export async function rateLimit(request: NextRequest, config: RateLimitConfig): 
 
   const cache = getCacheAdapter()
 
-  // Production guard: log warnings when in-memory limiter is detected.
+  // Production guard: refuse in-memory limiter in production for security-critical endpoints.
   // Vercel preview deployments (VERCEL_ENV=preview) are excluded — they may
   // legitimately fall back to in-memory when Redis is not provisioned.
   if (isStrictProduction && cache instanceof InMemoryCacheAdapter) {
     if (securityCritical) {
-      console.error("[RateLimit] CRITICAL: In-memory limiter detected in production for security-critical endpoint. Rate limiting is per-instance only. Configure REDIS_URL for distributed protection.")
-    } else {
-      console.error("[RateLimit] In-memory limiter detected in production. Rate limiting may be unreliable.")
+      console.error("[RateLimit] In-memory limiter detected in production for security-critical endpoint. Returning 503.")
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Service temporarily unavailable. Please try again later.",
+        },
+        { status: 503, headers: { "Retry-After": "30" } },
+      )
     }
+    // Log but don't block for non-critical endpoints
+    console.error("[RateLimit] In-memory limiter detected in production. Rate limiting may be unreliable.")
   }
 
   const count = await cache.increment(key, windowMs)

@@ -114,10 +114,6 @@ export function SignInForm() {
         throw new Error("Too many requests. Please try again later.")
       }
 
-      if (response.status === 503) {
-        throw new Error("Our servers are momentarily busy. Please wait a moment and try again.")
-      }
-
       if (!data.success) {
         if (data.requiresEmailVerification || data.error === "EMAIL_NOT_VERIFIED") {
           setRequiresVerification(true)

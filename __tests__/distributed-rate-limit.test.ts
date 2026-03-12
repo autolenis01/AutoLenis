@@ -208,7 +208,7 @@ describe("Distributed Rate Limiting", () => {
       _resetCacheAdapter()
     })
 
-    it("degrades to in-memory for security-critical endpoints when Redis unavailable in production", async () => {
+    it("returns 503 for security-critical endpoints when Redis unavailable in production", async () => {
       vi.stubEnv("NODE_ENV", "production")
       delete process.env["REDIS_URL"]
       _resetCacheAdapter()
@@ -220,11 +220,10 @@ describe("Distributed Rate Limiting", () => {
         securityCritical: true,
       })
 
-      // Should allow requests through with in-memory fallback (not block with 503)
-      expect(result).toBeNull()
-      expect(errorSpy).toHaveBeenCalledWith(
-        expect.stringContaining("[RateLimit] CRITICAL"),
-      )
+      expect(result).not.toBeNull()
+      expect(result?.status).toBe(503)
+      const body = await result!.json()
+      expect(body.error).toContain("temporarily unavailable")
       errorSpy.mockRestore()
     })
 

@@ -96,7 +96,7 @@ describe("Rate Limiting", () => {
       expect(result).toBeNull()
     })
 
-    it("logs a warning when Redis is unavailable in production", async () => {
+    it("logs a critical error when Redis is unavailable in production", async () => {
       vi.stubEnv("NODE_ENV", "production")
       delete process.env["REDIS_URL"]
       _resetCacheAdapter()
@@ -105,7 +105,7 @@ describe("Rate Limiting", () => {
       await rateLimit(createRequest("10.99.0.2"), { maxRequests: 5, windowMs: 60000 })
 
       expect(errorSpy).toHaveBeenCalledWith(
-        expect.stringContaining("[RateLimit] Redis unavailable in production"),
+        expect.stringContaining("[RateLimit] CRITICAL: Redis unavailable"),
       )
       errorSpy.mockRestore()
     })
