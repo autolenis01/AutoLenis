@@ -21,10 +21,13 @@ export async function POST(req: NextRequest) {
     for (const task of tasks) {
       try {
         // Find prospects in the gap area
-        const gapTask = task as { id: string; marketZip: string; buyerRequestId?: string }
+        const gapTask = task as { id: string; marketZip: string; buyerRequestId?: string; prospectId?: string }
+
+        // Skip tasks without an assigned prospect
+        if (!gapTask.prospectId) continue
 
         // Create an invite for the gap
-        await coverageGapService.inviteForGap(gapTask.id, "", "SYSTEM")
+        await coverageGapService.inviteForGap(gapTask.id, gapTask.prospectId, "SYSTEM")
         invitesSent++
       } catch {
         // Skip individual failures

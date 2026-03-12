@@ -16,7 +16,7 @@ export async function POST(
 
     const { alertId } = await params
     const body = await request.json()
-    const result = await CircumventionMonitorService.resolveAlert(alertId, body.resolution, user.userId)
+    const result = await CircumventionMonitorService.resolveAlert(alertId, user.userId, body.resolution)
     return NextResponse.json(result)
   } catch (error) {
     const correlationId = randomUUID()
