@@ -185,19 +185,20 @@ export function normalizePriceCents(rawPrice: unknown): number | null {
 
   if (!Number.isFinite(value) || value < 0) return null
 
-  // Heuristic: values under 1000 are likely already in dollars (not cents)
-  // and very large vehicles don't exceed ~$10M = 1_000_000_000 cents
-  if (value > 0 && value < 100) {
-    // Likely dollars, not cents – convert
+  // Price interpretation thresholds:
+  //   - 0 to 10M: treat as dollar amount → multiply by 100 to get cents
+  //   - 10M to 1B: treat as already in cents (pass through)
+  //   - > 1B: reject as unreasonable
+  //
+  // Rationale: no vehicle costs less than $0.01 or more than $10M.
+  // Raw sources typically provide dollar amounts (e.g., 25000 = $25,000).
+  // Pre-normalized data may already be in cents (e.g., 2500000 = $25,000).
+  if (value > 0 && value < 10_000_000) {
+    // Dollar amount → convert to cents
     return Math.round(value * 100)
   }
 
-  // If it looks like a dollar amount (has decimals or is > 100 and < 10_000_000)
-  if (value >= 100 && value < 10_000_000) {
-    return Math.round(value * 100)
-  }
-
-  // Already in cents range
+  // Already in cents range (10M cents = $100K minimum, 1B cents = $10M maximum)
   if (value >= 10_000_000 && value <= 1_000_000_000) {
     return Math.round(value)
   }
