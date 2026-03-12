@@ -37,9 +37,15 @@ export { PickupService, pickupService } from "./pickup.service"
 export { ContractShieldService, contractShieldService } from "./contract-shield.service"
 export { ESignService, esignService } from "./esign.service"
 export { InsuranceService, insuranceService } from "./insurance.service"
+export { ExternalPreApprovalService, externalPreApprovalService } from "./external-preapproval.service"
 
 // SEO Services
 export { SEOService, seoService } from "./seo.service"
 
 // Sourcing Services
 export { SourcingService, sourcingService } from "./sourcing.service"
+
+// Messaging & Deal Protection Services
+export { MessagingService, messagingService } from "./messaging.service"
+export { IdentityFirewallService, identityFirewallService } from "./identity-firewall.service"
+export { CircumventionMonitorService, circumventionMonitorService } from "./circumvention-monitor.service"

@@ -2973,3 +2973,83 @@ model PrequalOfferSnapshot {
 
   @@index([preQualificationId])
 }
+
+// ============================================
+// IN-APP BUYER ↔ DEALER MESSAGING
+// ============================================
+
+enum MessageThreadStatus {
+  ACTIVE
+  CLOSED
+  ARCHIVED
+}
+
+enum ApprovalType {
+  autolenis
+  external
+  cash
+}
+
+enum SenderType {
+  BUYER
+  DEALER
+  SYSTEM
+}
+
+model MessageThread {
+  id                String              @id @default(cuid())
+  workspaceId       String?
+  buyerId           String
+  dealerId          String
+  requestId         String?
+  dealId            String?
+  approvalType      ApprovalType
+  identityReleased  Boolean             @default(false)
+  status            MessageThreadStatus @default(ACTIVE)
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  messages          Message[]
+
+  @@index([buyerId])
+  @@index([dealerId])
+  @@index([requestId])
+  @@index([dealId])
+  @@index([approvalType])
+  @@index([workspaceId])
+  @@map("message_threads")
+}
+
+model Message {
+  id                    String   @id @default(cuid())
+  threadId              String
+  senderType            SenderType
+  senderId              String
+  body                  String   @db.Text
+  redactedBody          String   @db.Text
+  containsSensitiveData Boolean  @default(false)
+  circumventionScore    Float    @default(0)
+  createdAt             DateTime @default(now())
+
+  thread                MessageThread          @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  redactionEvents       MessageRedactionEvent[]
+
+  @@index([threadId])
+  @@index([senderId])
+  @@index([createdAt])
+  @@map("messages")
+}
+
+model MessageRedactionEvent {
+  id             String   @id @default(cuid())
+  messageId      String
+  detectionType  String
+  originalText   String   @db.Text
+  redactedText   String   @db.Text
+  createdAt      DateTime @default(now())
+
+  message        Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@index([messageId])
+  @@map("message_redaction_events")
+}
