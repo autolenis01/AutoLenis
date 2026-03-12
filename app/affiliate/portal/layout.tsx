@@ -7,7 +7,12 @@ import type { PortalLink } from "@/components/portal-switcher"
 import ChatWidget from "@/components/ai/chat-widget"
 
 export default async function AffiliatePortalLayout({ children }: { children: React.ReactNode }) {
-  const user = await getSessionUser()
+  let user
+  try {
+    user = await getSessionUser()
+  } catch {
+    redirect("/affiliate?signin=required")
+  }
 
   if (!user) {
     redirect("/affiliate?signin=required")

@@ -11,7 +11,12 @@ export default async function DealerLayout({
 }: {
   children: React.ReactNode
 }) {
-  const user = await getSessionUser()
+  let user
+  try {
+    user = await getSessionUser()
+  } catch {
+    redirect("/auth/signin")
+  }
 
   if (!user || !["DEALER", "DEALER_USER"].includes(user.role)) {
     redirect("/auth/signin")
