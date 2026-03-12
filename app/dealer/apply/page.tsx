@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { CheckCircle2, Loader2 } from "lucide-react"
+import { csrfHeaders } from "@/lib/csrf-client"
 
 /**
  * /dealer/apply — Authenticated dealer onboarding continuation route.
@@ -71,7 +72,7 @@ function DealerApplyContent() {
   async function handleUploadDocs() {
     setSubmitting(true)
     try {
-      const res = await fetch("/api/dealer/onboarding/upload-docs", { method: "POST" })
+      const res = await fetch("/api/dealer/onboarding/upload-docs", { method: "POST", headers: csrfHeaders() })
       if (res.ok) setStep("agreement")
     } catch {
       // handle error
@@ -83,7 +84,7 @@ function DealerApplyContent() {
   async function handleAcceptAgreement() {
     setSubmitting(true)
     try {
-      const res = await fetch("/api/dealer/onboarding/accept-agreement", { method: "POST" })
+      const res = await fetch("/api/dealer/onboarding/accept-agreement", { method: "POST", headers: csrfHeaders() })
       if (res.ok) setStep("setup")
     } catch {
       // handle error

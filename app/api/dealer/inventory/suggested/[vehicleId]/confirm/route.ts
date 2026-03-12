@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { requireAuth } from "@/lib/auth-server"
 import { requireDatabase } from "@/lib/require-database"
 import * as inventoryVerificationService from "@/lib/services/inventory-verification.service"
-import { supabase } from "@/lib/db"
+import { createClient } from "@/lib/supabase/server"
 
 export const dynamic = "force-dynamic"
 
@@ -17,6 +17,7 @@ export async function POST(
     if (dbUnavailable) return dbUnavailable
 
     const { vehicleId } = await params
+    const supabase = await createClient()
 
     const { data: dealer } = await supabase
       .from("Dealer")

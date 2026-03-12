@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { AlertCircle, CheckCircle2, Clock, XCircle } from "lucide-react"
+import { csrfHeaders } from "@/lib/csrf-client"
 
 interface OfferContext {
   inviteId: string
@@ -79,7 +80,7 @@ export default function DealerQuickOfferPage() {
     try {
       const res = await fetch(`/api/dealer/quick-offer/${token}/submit`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { ...csrfHeaders(), "Content-Type": "application/json" },
         body: JSON.stringify({
           ...form,
           year: form.year ? Number(form.year) : undefined,

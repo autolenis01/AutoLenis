@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { requireAuth } from "@/lib/auth-server"
 import { requireDatabase } from "@/lib/require-database"
 import * as inventoryVerificationService from "@/lib/services/inventory-verification.service"
-import { supabase } from "@/lib/db"
+import { createClient } from "@/lib/supabase/server"
 
 export const dynamic = "force-dynamic"
 
@@ -12,6 +12,8 @@ export async function GET(_req: NextRequest) {
     const user = await requireAuth(["DEALER", "DEALER_USER"])
     const dbUnavailable = requireDatabase()
     if (dbUnavailable) return dbUnavailable
+
+    const supabase = await createClient()
 
     // Resolve dealer ID
     const { data: dealer } = await supabase

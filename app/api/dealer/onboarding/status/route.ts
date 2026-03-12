@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { requireAuth } from "@/lib/auth-server"
 import * as dealerOnboardingConversionService from "@/lib/services/dealer-onboarding-conversion.service"
-import { supabase } from "@/lib/db"
+import { createClient } from "@/lib/supabase/server"
 
 export const dynamic = "force-dynamic"
 
@@ -9,6 +9,7 @@ export const dynamic = "force-dynamic"
 export async function GET(_req: NextRequest) {
   try {
     const user = await requireAuth(["DEALER", "DEALER_USER"])
+    const supabase = await createClient()
 
     const { data: dealer } = await supabase
       .from("Dealer")
