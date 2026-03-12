@@ -3,20 +3,11 @@ import { requireAuth } from "@/lib/auth-server"
 import { requireDatabase } from "@/lib/require-database"
 import { isTestWorkspace } from "@/lib/app-mode"
 import { messagingService } from "@/lib/services/messaging.service"
-import { prisma } from "@/lib/db"
 
 export const dynamic = "force-dynamic"
 
 function jsonError(message: string, status = 400) {
   return NextResponse.json({ success: false, error: message }, { status })
-}
-
-async function getBuyerProfileId(userId: string): Promise<string | undefined> {
-  const profile = await prisma.buyerProfile.findUnique({
-    where: { userId },
-    select: { id: true },
-  })
-  return profile?.id
 }
 
 /**
@@ -33,17 +24,11 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ threadId: 
     const dbUnavailable = requireDatabase()
     if (dbUnavailable) return dbUnavailable
 
-    const buyerId = await getBuyerProfileId(user.userId)
+    const buyerId = await messagingService.resolveBuyerProfileId(user.userId)
     if (!buyerId) return jsonError("Buyer profile not found", 404)
 
-    // Verify thread belongs to buyer
-    const thread = await prisma.messageThread.findUnique({
-      where: { id: threadId },
-    })
-
-    if (!thread || thread.buyerId !== buyerId) {
-      return jsonError("Thread not found", 404)
-    }
+    const threadData = await messagingService.getThreadForBuyer(threadId, buyerId)
+    if (!threadData) return jsonError("Thread not found", 404)
 
     const messages = await messagingService.listMessages(threadId, buyerId)
     const readiness = await messagingService.buildBuyerReadinessPayloadForMessaging(buyerId)
@@ -51,11 +36,11 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ threadId: 
     return NextResponse.json({
       success: true,
       data: {
-        id: thread.id,
-        dealerId: thread.dealerId,
-        approvalType: thread.approvalType,
-        identityReleased: thread.identityReleased,
-        status: thread.status,
+        id: threadData.id,
+        dealerId: threadData.dealerId,
+        approvalType: threadData.approvalType,
+        identityReleased: threadData.identityReleased,
+        status: threadData.status,
         readiness,
         messages: messages.map((m: any) => ({
           id: m.id,

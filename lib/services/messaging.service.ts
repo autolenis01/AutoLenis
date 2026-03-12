@@ -6,7 +6,7 @@
  * and external preapproval metadata for readiness gating.
  */
 
-import { prisma } from "@/lib/db"
+import { prisma, supabase } from "@/lib/db"
 import { identityFirewallService } from "./identity-firewall.service"
 import { circumventionMonitorService } from "./circumvention-monitor.service"
 
@@ -59,6 +59,46 @@ export interface ThreadSummary {
 // ── Service ────────────────────────────────────────────────────────────────
 
 export class MessagingService {
+  /**
+   * Resolve buyer profile ID from user ID.
+   */
+  async resolveBuyerProfileId(userId: string): Promise<string | undefined> {
+    const profile = await prisma.buyerProfile.findUnique({
+      where: { userId },
+      select: { id: true },
+    })
+    return profile?.id
+  }
+
+  /**
+   * Resolve dealer ID from user ID (checks DealerUser then Dealer).
+   */
+  async resolveDealerIdForUser(userId: string): Promise<string | undefined> {
+    const { data: dealerUser } = await supabase.from("DealerUser").select("dealerId").eq("userId", userId).maybeSingle()
+    if (dealerUser?.dealerId) return dealerUser.dealerId as string
+
+    const { data: dealer } = await supabase.from("Dealer").select("id").eq("userId", userId).maybeSingle()
+    return dealer?.id as string | undefined
+  }
+
+  /**
+   * Get a thread for a buyer (verifies buyer ownership).
+   */
+  async getThreadForBuyer(threadId: string, buyerId: string) {
+    const thread = await prisma.messageThread.findUnique({ where: { id: threadId } })
+    if (!thread || thread.buyerId !== buyerId) return null
+    return thread
+  }
+
+  /**
+   * Get a thread for a dealer (verifies dealer ownership).
+   */
+  async getThreadForDealer(threadId: string, dealerId: string) {
+    const thread = await prisma.messageThread.findUnique({ where: { id: threadId } })
+    if (!thread || thread.dealerId !== dealerId) return null
+    return thread
+  }
+
   /**
    * Resolve a buyer's approval type from the database.
    * Checks PreQualification (autolenis/external) and ExternalPreApprovalSubmission.

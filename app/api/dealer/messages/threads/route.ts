@@ -3,20 +3,11 @@ import { requireAuth } from "@/lib/auth-server"
 import { requireDatabase } from "@/lib/require-database"
 import { isTestWorkspace } from "@/lib/app-mode"
 import { messagingService } from "@/lib/services/messaging.service"
-import { supabase } from "@/lib/db"
 
 export const dynamic = "force-dynamic"
 
 function jsonError(message: string, status = 400) {
   return NextResponse.json({ success: false, error: message }, { status })
-}
-
-async function getDealerIdForUser(userId: string): Promise<string | undefined> {
-  const { data: dealerUser } = await supabase.from("DealerUser").select("dealerId").eq("userId", userId).maybeSingle()
-  if (dealerUser?.dealerId) return dealerUser.dealerId as string
-
-  const { data: dealer } = await supabase.from("Dealer").select("id").eq("userId", userId).maybeSingle()
-  return dealer?.id as string | undefined
 }
 
 /**
@@ -30,7 +21,7 @@ export async function GET(_req: NextRequest) {
     const dbUnavailable = requireDatabase()
     if (dbUnavailable) return dbUnavailable
 
-    const dealerId = await getDealerIdForUser(user.userId)
+    const dealerId = await messagingService.resolveDealerIdForUser(user.userId)
     if (!dealerId) return jsonError("Dealer not found", 404)
 
     const threads = await messagingService.listThreadsForDealer(dealerId)
@@ -55,7 +46,7 @@ export async function POST(req: NextRequest) {
     const dbCheck = requireDatabase()
     if (dbCheck) return dbCheck
 
-    const dealerId = await getDealerIdForUser(user.userId)
+    const dealerId = await messagingService.resolveDealerIdForUser(user.userId)
     if (!dealerId) return jsonError("Dealer not found", 404)
 
     const body = await req.json().catch(() => null)

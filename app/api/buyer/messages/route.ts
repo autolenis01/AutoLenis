@@ -3,20 +3,11 @@ import { requireAuth } from "@/lib/auth-server"
 import { requireDatabase } from "@/lib/require-database"
 import { isTestWorkspace } from "@/lib/app-mode"
 import { messagingService } from "@/lib/services/messaging.service"
-import { prisma } from "@/lib/db"
 
 export const dynamic = "force-dynamic"
 
 function jsonError(message: string, status = 400) {
   return NextResponse.json({ success: false, error: message }, { status })
-}
-
-async function getBuyerProfileId(userId: string): Promise<string | undefined> {
-  const profile = await prisma.buyerProfile.findUnique({
-    where: { userId },
-    select: { id: true },
-  })
-  return profile?.id
 }
 
 /**
@@ -30,7 +21,7 @@ export async function GET(_req: NextRequest) {
     const dbUnavailable = requireDatabase()
     if (dbUnavailable) return dbUnavailable
 
-    const buyerId = await getBuyerProfileId(user.userId)
+    const buyerId = await messagingService.resolveBuyerProfileId(user.userId)
     if (!buyerId) return jsonError("Buyer profile not found", 404)
 
     const threads = await messagingService.listThreadsForBuyer(buyerId)
@@ -55,7 +46,7 @@ export async function POST(req: NextRequest) {
     const dbCheck = requireDatabase()
     if (dbCheck) return dbCheck
 
-    const buyerId = await getBuyerProfileId(user.userId)
+    const buyerId = await messagingService.resolveBuyerProfileId(user.userId)
     if (!buyerId) return jsonError("Buyer profile not found", 404)
 
     const body = await req.json().catch(() => null)
@@ -71,7 +62,7 @@ export async function POST(req: NextRequest) {
         dealerId,
         requestId: body.requestId ?? null,
         dealId: body.dealId ?? null,
-        workspaceId: user.workspaceId ?? null,
+        workspaceId: user.workspace_id ?? null,
       })
 
       return NextResponse.json({
