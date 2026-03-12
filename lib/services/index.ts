@@ -51,6 +51,20 @@ export * as dealerSourceService from "./dealer-source.service"
 // Inventory Pipeline Services
 export * as inventoryNormalizeService from "./inventory-normalize.service"
 export * as inventoryDedupeService from "./inventory-dedupe.service"
+export * as inventoryFetchService from "./inventory-fetch.service"
+export * as inventoryParseService from "./inventory-parse.service"
+export * as inventorySearchService from "./inventory-search.service"
+export * as inventoryMatchService from "./inventory-match.service"
+export * as inventoryVerificationService from "./inventory-verification.service"
+
+// Dealer Prospect & Invite Services
+export * as dealerProspectService from "./dealer-prospect.service"
+export * as dealerInviteService from "./dealer-invite.service"
+export * as dealerQuickOfferService from "./dealer-quick-offer.service"
+export * as dealerOnboardingConversionService from "./dealer-onboarding-conversion.service"
+
+// Coverage Gap Services
+export * as coverageGapService from "./coverage-gap.service"
 
 // Identity & Protection Services
 export * as identityFirewallService from "./identity-firewall.service"
