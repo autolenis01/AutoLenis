@@ -1,0 +1,37 @@
+import { type NextRequest, NextResponse } from "next/server"
+import { requireAuth } from "@/lib/auth-server"
+import * as dealerOnboardingConversionService from "@/lib/services/dealer-onboarding-conversion.service"
+import { supabase } from "@/lib/db"
+
+export const dynamic = "force-dynamic"
+
+// GET /api/dealer/onboarding/conversion-status — Check conversion progress
+export async function GET(_req: NextRequest) {
+  try {
+    const user = await requireAuth(["DEALER", "DEALER_USER"])
+
+    // Find prospect linked to this user's dealer or email
+    const { data: dealer } = await supabase
+      .from("Dealer")
+      .select("id")
+      .eq("userId", user.userId)
+      .maybeSingle()
+
+    // Try to find a conversion by dealer ID or prospect
+    const { data: prospect } = await supabase
+      .from("DealerProspect")
+      .select("id")
+      .eq("convertedDealerId", dealer?.id ?? "none")
+      .maybeSingle()
+
+    if (!prospect?.id) {
+      return NextResponse.json({ success: true, data: null })
+    }
+
+    const status = await dealerOnboardingConversionService.getConversionStatus(prospect.id)
+    return NextResponse.json({ success: true, data: status })
+  } catch (error) {
+    console.error("[onboarding-conversion] Error:", error)
+    return NextResponse.json({ error: "Failed to get conversion status" }, { status: 500 })
+  }
+}
