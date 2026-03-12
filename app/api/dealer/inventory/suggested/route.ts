@@ -30,6 +30,10 @@ export async function GET(_req: NextRequest) {
 
     return NextResponse.json({ success: true, data: vehicles })
   } catch (error) {
+    const statusCode = (error as { statusCode?: number }).statusCode
+    if (statusCode === 401 || statusCode === 403) {
+      return NextResponse.json({ error: (error as Error).message }, { status: statusCode })
+    }
     console.error("[dealer-suggested] Error:", error)
     return NextResponse.json({ error: "Failed to load suggested inventory" }, { status: 500 })
   }

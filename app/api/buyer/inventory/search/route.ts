@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { getSessionUser } from "@/lib/auth-server"
-import { InventoryService } from "@/lib/services/inventory.service"
+import { InventoryService, type SearchFilters } from "@/lib/services/inventory.service"
 import { searchInventory, type SearchParams } from "@/lib/services/inventory-search.service"
 import { createClient } from "@/lib/supabase/server"
 
@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
       minMileage: searchParams.get("minMileage") ? Number.parseInt(searchParams.get("minMileage")!, 10) : undefined,
       maxMileage: searchParams.get("maxMileage") ? Number.parseInt(searchParams.get("maxMileage")!, 10) : undefined,
       isNew: searchParams.get("isNew") ? searchParams.get("isNew") === "true" : undefined,
-      sortBy: searchParams.get("sortBy") as string | undefined,
+      sortBy: searchParams.get("sortBy") as SearchFilters["sortBy"],
       page: searchParams.get("page") ? Number.parseInt(searchParams.get("page")!, 10) : 1,
       pageSize: searchParams.get("pageSize") ? Number.parseInt(searchParams.get("pageSize")!, 10) : 20,
       budgetOnly: searchParams.get("budgetOnly") === "true",

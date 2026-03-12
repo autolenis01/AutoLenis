@@ -45,6 +45,10 @@ export async function GET(_req: NextRequest) {
       },
     })
   } catch (error) {
+    const statusCode = (error as { statusCode?: number }).statusCode
+    if (statusCode === 401 || statusCode === 403) {
+      return NextResponse.json({ error: (error as Error).message }, { status: statusCode })
+    }
     console.error("[onboarding-status] Error:", error)
     return NextResponse.json({ error: "Failed to get status" }, { status: 500 })
   }

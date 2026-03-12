@@ -32,6 +32,10 @@ export async function GET(_req: NextRequest) {
     const status = await dealerOnboardingConversionService.getConversionStatus(prospect.id)
     return NextResponse.json({ success: true, data: status })
   } catch (error) {
+    const statusCode = (error as { statusCode?: number }).statusCode
+    if (statusCode === 401 || statusCode === 403) {
+      return NextResponse.json({ error: (error as Error).message }, { status: statusCode })
+    }
     console.error("[onboarding-conversion] Error:", error)
     return NextResponse.json({ error: "Failed to get conversion status" }, { status: 500 })
   }

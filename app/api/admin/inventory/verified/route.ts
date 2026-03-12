@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
 
     const sp = request.nextUrl.searchParams
     const result = await InventorySearchService.searchInventory({
-      type: "verified",
+      source: "verified",
       make: sp.get("make") || undefined,
       model: sp.get("model") || undefined,
       page: Number.parseInt(sp.get("page") || "1"),

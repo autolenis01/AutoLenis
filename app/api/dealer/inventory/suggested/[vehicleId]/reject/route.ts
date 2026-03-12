@@ -37,6 +37,10 @@ export async function POST(
     )
     return NextResponse.json({ success: true, data: result })
   } catch (error) {
+    const statusCode = (error as { statusCode?: number }).statusCode
+    if (statusCode === 401 || statusCode === 403) {
+      return NextResponse.json({ error: (error as Error).message }, { status: statusCode })
+    }
     console.error("[dealer-reject] Error:", error)
     return NextResponse.json({ error: "Failed to reject vehicle" }, { status: 500 })
   }

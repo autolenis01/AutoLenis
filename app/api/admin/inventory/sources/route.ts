@@ -13,10 +13,10 @@ export async function GET(request: NextRequest) {
 
     const sp = request.nextUrl.searchParams
     const status = sp.get("status") || undefined
-    const dealerId = sp.get("dealerId") || undefined
+    const sourceType = sp.get("sourceType") || undefined
     const page = Number.parseInt(sp.get("page") || "1")
 
-    const result = await DealerSourceService.getSources({ status, dealerId, page })
+    const result = await DealerSourceService.getSources({ status, sourceType, page })
     return NextResponse.json(result)
   } catch (error) {
     const correlationId = randomUUID()

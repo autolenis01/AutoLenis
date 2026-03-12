@@ -35,6 +35,10 @@ export async function POST(_req: NextRequest) {
     const result = await dealerOnboardingConversionService.uploadDocs((conversion as { id: string }).id)
     return NextResponse.json({ success: true, data: result })
   } catch (error) {
+    const statusCode = (error as { statusCode?: number }).statusCode
+    if (statusCode === 401 || statusCode === 403) {
+      return NextResponse.json({ error: (error as Error).message }, { status: statusCode })
+    }
     console.error("[onboarding-upload] Error:", error)
     return NextResponse.json({ error: "Failed to update docs status" }, { status: 500 })
   }
