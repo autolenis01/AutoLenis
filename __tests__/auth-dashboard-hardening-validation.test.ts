@@ -99,6 +99,10 @@ describe("Auth endpoint rate-limit graceful degradation (no 503 on Redis unavail
     )
 
     expect(result).toBeNull()
+    // auth preset is securityCritical → must log CRITICAL
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining("[RateLimit] CRITICAL"),
+    )
     errorSpy.mockRestore()
   })
 
@@ -115,6 +119,10 @@ describe("Auth endpoint rate-limit graceful degradation (no 503 on Redis unavail
     )
 
     expect(result).toBeNull()
+    // resendVerification is NOT securityCritical → logs non-CRITICAL degradation warning
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining("[RateLimit] Redis unavailable in production"),
+    )
     errorSpy.mockRestore()
   })
 })
