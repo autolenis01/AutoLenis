@@ -48,15 +48,21 @@ export class IdentityFirewallService {
     for (const { pattern, type } of patterns) {
       // Reset lastIndex for global patterns
       pattern.lastIndex = 0
+      const matches: string[] = []
       let match: RegExpExecArray | null = null
       while ((match = pattern.exec(redacted)) !== null) {
-        detections.push({
-          type,
-          original: match[0],
-          replacement: REDACTED,
-        })
+        matches.push(match[0])
       }
-      redacted = redacted.replace(pattern, REDACTED)
+      if (matches.length > 0) {
+        for (const m of matches) {
+          detections.push({
+            type,
+            original: m,
+            replacement: REDACTED,
+          })
+        }
+        redacted = redacted.replace(pattern, REDACTED)
+      }
     }
 
     return {

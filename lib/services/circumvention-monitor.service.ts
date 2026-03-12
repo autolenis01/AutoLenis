@@ -50,9 +50,11 @@ export class CircumventionMonitorService {
       reasons.push("Message contains redacted PII")
     }
 
-    // Check for off-platform intent keywords
+    // Check for off-platform intent keywords (deduplicate matches)
+    const matched = new Set<string>()
     for (const keyword of OFF_PLATFORM_KEYWORDS) {
-      if (lower.includes(keyword)) {
+      if (lower.includes(keyword) && !matched.has(keyword)) {
+        matched.add(keyword)
         score += 20
         reasons.push(`Off-platform language detected: "${keyword}"`)
       }
