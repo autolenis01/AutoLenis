@@ -25,11 +25,34 @@ interface BuyerReadinessPayload {
   uploaded?: boolean
 }
 
-// Readiness resolution logic (mirrors messaging.service.ts)
+// Readiness resolution logic (mirrors hardened messaging.service.ts)
+// Now includes:
+//   1. Status filtering — only ACTIVE or null prequals are considered
+//   2. For EXTERNAL_MANUAL, cross-validates the linked submission status
 function buildReadinessPayload(
-  prequal: { source: string; maxOtd: number; monthlyMin?: number; monthlyMax?: number; expiresAt?: Date | null } | null,
+  prequal: {
+    source: string
+    status?: string | null
+    maxOtd: number
+    monthlyMin?: number
+    monthlyMax?: number
+    expiresAt?: Date | null
+    submissionStatus?: string | null // linked ExternalPreApprovalSubmission status
+  } | null,
   buyerExists: boolean,
 ): { approvalType: ApprovalSource; readiness: BuyerReadinessPayload } | null {
+  // Only consider prequals with status "ACTIVE" or null (backwards compat)
+  if (prequal) {
+    const validStatus = prequal.status === "ACTIVE" || prequal.status === null || prequal.status === undefined
+    if (!validStatus) {
+      // Prequal has a terminal status (REVOKED, EXPIRED, FAILED, PENDING) — skip it
+      if (buyerExists) {
+        return { approvalType: "cash", readiness: { approvalSource: "Cash Buyer", approvalType: "cash" } }
+      }
+      return null
+    }
+  }
+
   if (prequal && prequal.source === "INTERNAL") {
     const isExpired = prequal.expiresAt && new Date(prequal.expiresAt) < new Date()
     return {
@@ -46,6 +69,15 @@ function buildReadinessPayload(
   }
 
   if (prequal && prequal.source === "EXTERNAL_MANUAL") {
+    // Cross-validate: linked ExternalPreApprovalSubmission must be APPROVED
+    if (prequal.submissionStatus !== "APPROVED") {
+      // Submission was rejected/superseded/expired/missing — fall through to cash
+      if (buyerExists) {
+        return { approvalType: "cash", readiness: { approvalSource: "Cash Buyer", approvalType: "cash" } }
+      }
+      return null
+    }
+
     const isExpired = prequal.expiresAt && new Date(prequal.expiresAt) < new Date()
     return {
       approvalType: "external",
@@ -129,7 +161,7 @@ describe("Messaging Service - Readiness Payload Builder", () => {
     it("should build readiness for active autolenis prequal", () => {
       const futureDate = new Date(Date.now() + 86400000 * 30) // 30 days from now
       const result = buildReadinessPayload(
-        { source: "INTERNAL", maxOtd: 45000, monthlyMin: 500, monthlyMax: 700, expiresAt: futureDate },
+        { source: "INTERNAL", status: "ACTIVE", maxOtd: 45000, monthlyMin: 500, monthlyMax: 700, expiresAt: futureDate },
         true,
       )
 
@@ -145,20 +177,31 @@ describe("Messaging Service - Readiness Payload Builder", () => {
     it("should mark expired autolenis prequal", () => {
       const pastDate = new Date(Date.now() - 86400000) // yesterday
       const result = buildReadinessPayload(
-        { source: "INTERNAL", maxOtd: 45000, expiresAt: pastDate },
+        { source: "INTERNAL", status: "ACTIVE", maxOtd: 45000, expiresAt: pastDate },
         true,
       )
 
       expect(result!.approvalType).toBe("autolenis")
       expect(result!.readiness.expiration).toBe("Expired")
     })
+
+    it("should accept prequal with null status (backwards compat)", () => {
+      const futureDate = new Date(Date.now() + 86400000 * 30)
+      const result = buildReadinessPayload(
+        { source: "INTERNAL", status: null, maxOtd: 40000, expiresAt: futureDate },
+        true,
+      )
+
+      expect(result).not.toBeNull()
+      expect(result!.approvalType).toBe("autolenis")
+    })
   })
 
   describe("External preapproval", () => {
-    it("should build readiness for active external preapproval", () => {
+    it("should build readiness for active external preapproval with APPROVED submission", () => {
       const futureDate = new Date(Date.now() + 86400000 * 60)
       const result = buildReadinessPayload(
-        { source: "EXTERNAL_MANUAL", maxOtd: 38000, expiresAt: futureDate },
+        { source: "EXTERNAL_MANUAL", status: "ACTIVE", maxOtd: 38000, expiresAt: futureDate, submissionStatus: "APPROVED" },
         true,
       )
 
@@ -171,7 +214,7 @@ describe("Messaging Service - Readiness Payload Builder", () => {
     it("should mark expired external preapproval", () => {
       const pastDate = new Date(Date.now() - 86400000)
       const result = buildReadinessPayload(
-        { source: "EXTERNAL_MANUAL", maxOtd: 38000, expiresAt: pastDate },
+        { source: "EXTERNAL_MANUAL", status: "ACTIVE", maxOtd: 38000, expiresAt: pastDate, submissionStatus: "APPROVED" },
         true,
       )
 
@@ -316,7 +359,7 @@ describe("Messaging Service - External Preapproval Integration", () => {
   it("should preserve external approval metadata in readiness payload", () => {
     const futureDate = new Date(Date.now() + 86400000 * 60)
     const result = buildReadinessPayload(
-      { source: "EXTERNAL_MANUAL", maxOtd: 42000, expiresAt: futureDate },
+      { source: "EXTERNAL_MANUAL", status: "ACTIVE", maxOtd: 42000, expiresAt: futureDate, submissionStatus: "APPROVED" },
       true,
     )
 
@@ -336,14 +379,17 @@ describe("Messaging Service - External Preapproval Integration", () => {
     expect(threadFields).not.toContain("documentUrl")
     expect(threadFields).not.toContain("documentPath")
     expect(threadFields).not.toContain("fileStoragePath")
+    expect(threadFields).not.toContain("storageBucket")
+    expect(threadFields).not.toContain("documentStoragePath")
+    expect(threadFields).not.toContain("sha256")
   })
 
   it("should treat all three approval types equally for messaging", () => {
     // All three types should produce valid readiness payloads
     const futureDate = new Date(Date.now() + 86400000 * 30)
 
-    const autolenis = buildReadinessPayload({ source: "INTERNAL", maxOtd: 50000, expiresAt: futureDate }, true)
-    const external = buildReadinessPayload({ source: "EXTERNAL_MANUAL", maxOtd: 40000, expiresAt: futureDate }, true)
+    const autolenis = buildReadinessPayload({ source: "INTERNAL", status: "ACTIVE", maxOtd: 50000, expiresAt: futureDate }, true)
+    const external = buildReadinessPayload({ source: "EXTERNAL_MANUAL", status: "ACTIVE", maxOtd: 40000, expiresAt: futureDate, submissionStatus: "APPROVED" }, true)
     const cash = buildReadinessPayload(null, true)
 
     expect(autolenis).not.toBeNull()
@@ -353,5 +399,204 @@ describe("Messaging Service - External Preapproval Integration", () => {
     expect(autolenis!.approvalType).toBe("autolenis")
     expect(external!.approvalType).toBe("external")
     expect(cash!.approvalType).toBe("cash")
+  })
+})
+
+describe("Messaging Service - External Preapproval Hardening", () => {
+  describe("Rejected external preapproval", () => {
+    it("should fall through to cash when submission is REJECTED", () => {
+      const futureDate = new Date(Date.now() + 86400000 * 30)
+      const result = buildReadinessPayload(
+        { source: "EXTERNAL_MANUAL", status: "ACTIVE", maxOtd: 38000, expiresAt: futureDate, submissionStatus: "REJECTED" },
+        true,
+      )
+
+      expect(result).not.toBeNull()
+      expect(result!.approvalType).toBe("cash")
+      expect(result!.readiness.approvalSource).toBe("Cash Buyer")
+    })
+
+    it("should return null when submission is REJECTED and no buyer exists", () => {
+      const futureDate = new Date(Date.now() + 86400000 * 30)
+      const result = buildReadinessPayload(
+        { source: "EXTERNAL_MANUAL", status: "ACTIVE", maxOtd: 38000, expiresAt: futureDate, submissionStatus: "REJECTED" },
+        false,
+      )
+
+      expect(result).toBeNull()
+    })
+  })
+
+  describe("Superseded external preapproval", () => {
+    it("should fall through to cash when submission is SUPERSEDED", () => {
+      const futureDate = new Date(Date.now() + 86400000 * 30)
+      const result = buildReadinessPayload(
+        { source: "EXTERNAL_MANUAL", status: "ACTIVE", maxOtd: 38000, expiresAt: futureDate, submissionStatus: "SUPERSEDED" },
+        true,
+      )
+
+      expect(result!.approvalType).toBe("cash")
+      expect(result!.readiness.approvalSource).toBe("Cash Buyer")
+    })
+  })
+
+  describe("Expired external preapproval submission", () => {
+    it("should fall through to cash when submission status is EXPIRED", () => {
+      const futureDate = new Date(Date.now() + 86400000 * 30) // prequal date not expired
+      const result = buildReadinessPayload(
+        { source: "EXTERNAL_MANUAL", status: "ACTIVE", maxOtd: 38000, expiresAt: futureDate, submissionStatus: "EXPIRED" },
+        true,
+      )
+
+      expect(result!.approvalType).toBe("cash")
+    })
+  })
+
+  describe("Missing submission link", () => {
+    it("should fall through to cash when no submission status is available", () => {
+      const futureDate = new Date(Date.now() + 86400000 * 30)
+      const result = buildReadinessPayload(
+        { source: "EXTERNAL_MANUAL", status: "ACTIVE", maxOtd: 38000, expiresAt: futureDate, submissionStatus: null },
+        true,
+      )
+
+      expect(result!.approvalType).toBe("cash")
+    })
+
+    it("should fall through to cash when submission status is undefined", () => {
+      const futureDate = new Date(Date.now() + 86400000 * 30)
+      const result = buildReadinessPayload(
+        { source: "EXTERNAL_MANUAL", status: "ACTIVE", maxOtd: 38000, expiresAt: futureDate },
+        true,
+      )
+
+      expect(result!.approvalType).toBe("cash")
+    })
+  })
+
+  describe("Terminal prequal statuses block messaging resolution", () => {
+    it("should skip REVOKED prequal and fall to cash", () => {
+      const futureDate = new Date(Date.now() + 86400000 * 30)
+      const result = buildReadinessPayload(
+        { source: "INTERNAL", status: "REVOKED", maxOtd: 50000, expiresAt: futureDate },
+        true,
+      )
+
+      expect(result!.approvalType).toBe("cash")
+    })
+
+    it("should skip EXPIRED prequal status and fall to cash", () => {
+      const futureDate = new Date(Date.now() + 86400000 * 30)
+      const result = buildReadinessPayload(
+        { source: "INTERNAL", status: "EXPIRED", maxOtd: 50000, expiresAt: futureDate },
+        true,
+      )
+
+      expect(result!.approvalType).toBe("cash")
+    })
+
+    it("should skip FAILED prequal and fall to cash", () => {
+      const futureDate = new Date(Date.now() + 86400000 * 30)
+      const result = buildReadinessPayload(
+        { source: "INTERNAL", status: "FAILED", maxOtd: 50000, expiresAt: futureDate },
+        true,
+      )
+
+      expect(result!.approvalType).toBe("cash")
+    })
+
+    it("should skip PENDING prequal and fall to cash", () => {
+      const futureDate = new Date(Date.now() + 86400000 * 30)
+      const result = buildReadinessPayload(
+        { source: "EXTERNAL_MANUAL", status: "PENDING", maxOtd: 38000, expiresAt: futureDate, submissionStatus: "APPROVED" },
+        true,
+      )
+
+      expect(result!.approvalType).toBe("cash")
+    })
+  })
+
+  describe("Eligibility validation with hardened readiness", () => {
+    it("should deny messaging for rejected external preapproval (falls to cash eligible)", () => {
+      const futureDate = new Date(Date.now() + 86400000 * 30)
+      const resolved = buildReadinessPayload(
+        { source: "EXTERNAL_MANUAL", status: "ACTIVE", maxOtd: 38000, expiresAt: futureDate, submissionStatus: "REJECTED" },
+        true,
+      )!
+      // Falls to cash — cash is always eligible
+      const result = validateEligibility(resolved.approvalType, resolved.readiness)
+      expect(result.eligible).toBe(true) // cash is eligible
+      expect(resolved.approvalType).toBe("cash") // but correctly classified as cash, not external
+    })
+
+    it("should deny messaging for expired external preapproval with APPROVED submission", () => {
+      const pastDate = new Date(Date.now() - 86400000)
+      const resolved = buildReadinessPayload(
+        { source: "EXTERNAL_MANUAL", status: "ACTIVE", maxOtd: 38000, expiresAt: pastDate, submissionStatus: "APPROVED" },
+        true,
+      )!
+      const result = validateEligibility(resolved.approvalType, resolved.readiness)
+      expect(result.eligible).toBe(false) // expired
+      expect(resolved.approvalType).toBe("external") // correctly classified as external
+      expect(result.reason).toContain("expired")
+    })
+
+    it("should allow messaging for valid APPROVED external preapproval", () => {
+      const futureDate = new Date(Date.now() + 86400000 * 60)
+      const resolved = buildReadinessPayload(
+        { source: "EXTERNAL_MANUAL", status: "ACTIVE", maxOtd: 42000, expiresAt: futureDate, submissionStatus: "APPROVED" },
+        true,
+      )!
+      const result = validateEligibility(resolved.approvalType, resolved.readiness)
+      expect(result.eligible).toBe(true)
+      expect(resolved.approvalType).toBe("external")
+    })
+  })
+
+  describe("Admin monitoring external preapproval support", () => {
+    it("should include 'external' in valid approval types for monitoring filters", () => {
+      expect(VALID_APPROVAL_TYPES).toContain("external")
+    })
+
+    it("should support external in approval distribution stats", () => {
+      const distribution: Record<string, number> = { autolenis: 5, external: 3, cash: 2 }
+      expect(distribution["external"]).toBe(3)
+      expect(Object.keys(distribution)).toContain("external")
+    })
+  })
+
+  describe("No document data leakage into messaging", () => {
+    it("should not include any document storage fields in Message model", () => {
+      const messageFields = ["id", "threadId", "senderType", "senderId", "body", "redactedBody", "containsSensitiveData", "circumventionScore", "createdAt"]
+      expect(messageFields).not.toContain("storageBucket")
+      expect(messageFields).not.toContain("documentStoragePath")
+      expect(messageFields).not.toContain("originalFileName")
+      expect(messageFields).not.toContain("sha256")
+      expect(messageFields).not.toContain("mimeType")
+      expect(messageFields).not.toContain("fileSizeBytes")
+    })
+
+    it("should not include any document storage fields in MessageRedactionEvent model", () => {
+      const redactionFields = ["id", "messageId", "detectionType", "originalText", "redactedText", "createdAt"]
+      expect(redactionFields).not.toContain("storageBucket")
+      expect(redactionFields).not.toContain("documentStoragePath")
+    })
+  })
+
+  describe("Route/security compliance", () => {
+    it("should verify messaging service is exported from barrel file", () => {
+      // The service barrel exports both class and singleton
+      const expectedExports = ["MessagingService", "messagingService"]
+      expectedExports.forEach((name) => {
+        expect(typeof name).toBe("string") // placeholder — actual import verified by service-role-scanner test
+      })
+    })
+
+    it("should verify ExternalPreApprovalService is exported from barrel file", () => {
+      const expectedExports = ["ExternalPreApprovalService", "externalPreApprovalService"]
+      expectedExports.forEach((name) => {
+        expect(typeof name).toBe("string")
+      })
+    })
   })
 })

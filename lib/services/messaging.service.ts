@@ -103,17 +103,29 @@ export class MessagingService {
    * Resolve a buyer's approval type from the database.
    * Checks PreQualification (autolenis/external) and ExternalPreApprovalSubmission.
    * Falls back to cash if neither exists.
+   *
+   * Only uses prequals with status "ACTIVE" or null (for backwards compat).
+   * For EXTERNAL_MANUAL source, cross-validates the linked ExternalPreApprovalSubmission
+   * is still in APPROVED status — rejects stale prequals from rejected/superseded/expired submissions.
    */
   async resolveBuyerApprovalType(buyerId: string): Promise<{
     approvalType: ApprovalSource
     readiness: BuyerReadinessPayload
   }> {
-    // Check for autolenis native prequalification
+    // Only match prequals that are ACTIVE or have no status set (backwards compat).
+    // Excludes REVOKED, EXPIRED, FAILED, PENDING.
     const prequal = await prisma.preQualification.findFirst({
-      where: { buyerId, status: { not: "REVOKED" } },
+      where: {
+        buyerId,
+        OR: [
+          { status: "ACTIVE" },
+          { status: null },
+        ],
+      },
       orderBy: { createdAt: "desc" },
     })
 
+    // Check for autolenis native prequalification
     if (prequal && prequal.source === "INTERNAL") {
       const isExpired = prequal.expiresAt && new Date(prequal.expiresAt) < new Date()
       return {
@@ -129,21 +141,35 @@ export class MessagingService {
       }
     }
 
-    // Check for external preapproval (from canonical source)
+    // Check for external preapproval (from canonical ExternalPreApprovalSubmission path)
     if (prequal && prequal.source === "EXTERNAL_MANUAL") {
-      const isExpired = prequal.expiresAt && new Date(prequal.expiresAt) < new Date()
-      return {
-        approvalType: "external",
-        readiness: {
-          approvalSource: "External Pre-Approval Uploaded",
-          approvalType: "external",
-          maxBudget: prequal.maxOtd ?? null,
-          monthlyBudgetMin: prequal.estimatedMonthlyMin ?? null,
-          monthlyBudgetMax: prequal.estimatedMonthlyMax ?? null,
-          expiration: isExpired ? "Expired" : prequal.expiresAt?.toISOString() ?? null,
-          uploaded: true,
-        },
+      // Cross-validate: the linked ExternalPreApprovalSubmission must still be APPROVED.
+      // Rejects stale prequals from submissions that were later rejected, superseded, or expired.
+      let submissionValid = false
+      if (prequal.externalSubmissionId) {
+        const submission = await prisma.externalPreApprovalSubmission.findUnique({
+          where: { id: prequal.externalSubmissionId },
+          select: { status: true },
+        })
+        submissionValid = submission?.status === "APPROVED"
       }
+
+      if (submissionValid) {
+        const isExpired = prequal.expiresAt && new Date(prequal.expiresAt) < new Date()
+        return {
+          approvalType: "external",
+          readiness: {
+            approvalSource: "External Pre-Approval Uploaded",
+            approvalType: "external",
+            maxBudget: prequal.maxOtd ?? null,
+            monthlyBudgetMin: prequal.estimatedMonthlyMin ?? null,
+            monthlyBudgetMax: prequal.estimatedMonthlyMax ?? null,
+            expiration: isExpired ? "Expired" : prequal.expiresAt?.toISOString() ?? null,
+            uploaded: true,
+          },
+        }
+      }
+      // Submission is not APPROVED (rejected/superseded/expired/missing) — fall through to cash
     }
 
     // Check buyer profile for cash-buyer context (no prequalification record needed)
