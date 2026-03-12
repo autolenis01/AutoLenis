@@ -141,9 +141,20 @@ export async function searchInventory(params: SearchParams): Promise<{
     }
   }
 
+  // Suppress market results that duplicate a verified result for the same VIN
+  const verifiedVins = new Set(
+    verifiedResults
+      .filter((v) => v.vin)
+      .map((v) => v.vin),
+  )
+  const dedupedMarket = marketResults.filter((m) => {
+    if (!m.vin) return true
+    return !verifiedVins.has(m.vin)
+  })
+
   // Verified results come first
-  const results = [...verifiedResults, ...marketResults]
-  const total = verifiedTotal + marketTotal
+  const results = [...verifiedResults, ...dedupedMarket]
+  const total = verifiedTotal + dedupedMarket.length
 
   return { results, total, page, perPage }
 }
