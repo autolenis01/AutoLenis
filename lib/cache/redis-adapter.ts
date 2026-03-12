@@ -223,6 +223,10 @@ export class ProductionCacheUnavailableError extends Error {
 // ---------------------------------------------------------------------------
 
 function isProductionEnv(): boolean {
+  // Vercel preview deployments set NODE_ENV=production but are not true
+  // production environments. Only enforce Redis requirements in actual
+  // production so preview/staging deployments can fall back to in-memory.
+  if (process.env["VERCEL_ENV"] === "preview") return false
   return process.env["NODE_ENV"] === "production"
 }
 

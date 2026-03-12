@@ -194,4 +194,17 @@ describe("Production Cache Policy", () => {
     getCacheAdapter()
     expect(() => assertProductionCacheReady()).toThrow(ProductionCacheUnavailableError)
   })
+
+  it("assertProductionCacheReady does not throw in Vercel preview even without Redis", () => {
+    vi.stubEnv("NODE_ENV", "production")
+    vi.stubEnv("VERCEL_ENV", "preview")
+    expect(() => assertProductionCacheReady()).not.toThrow()
+  })
+
+  it("getSecurityCriticalCacheAdapter returns adapter in Vercel preview without Redis", () => {
+    vi.stubEnv("NODE_ENV", "production")
+    vi.stubEnv("VERCEL_ENV", "preview")
+    const adapter = getSecurityCriticalCacheAdapter()
+    expect(adapter).toBeInstanceOf(InMemoryCacheAdapter)
+  })
 })
