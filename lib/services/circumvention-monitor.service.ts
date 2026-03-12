@@ -302,3 +302,16 @@ function determineSeverity(patterns: DetectedPattern[]): string {
   if (types.has("URL") || types.has("GOOGLE_MAPS") || types.has("APPLE_MAPS")) return "MEDIUM"
   return "LOW"
 }
+
+// ─── Synchronous scanning adapter for messaging service ─────────────────────
+// Lightweight in-line circumvention scorer used by sendMessage().
+// Full async scanning + alerting is provided by scanMessageForCircumvention().
+
+export const circumventionMonitorService = {
+  scan(body: string, containsSensitiveData: boolean): { score: number; flagged: boolean } {
+    const patterns = detectPatterns(body)
+    const patternScore = Math.min(patterns.length * 20, 80)
+    const score = containsSensitiveData ? Math.max(patternScore, 80) : patternScore
+    return { score, flagged: score >= 60 }
+  },
+}

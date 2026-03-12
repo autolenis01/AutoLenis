@@ -240,3 +240,96 @@ async function performRelease(dealId: string, triggeredBy: string, reason: strin
 
   return { released: profiles.length }
 }
+
+// ─── Identity Firewall Text Scanner ─────────────────────────────────────────
+// Synchronous PII detection and redaction for in-app messaging.
+// Detects phone numbers, emails, URLs, social handles, and street addresses.
+
+/** US phone numbers: (555) 555-5555, 555-555-5555, 555.555.5555, +1 555 555 5555 */
+const PHONE_RE = /(?:\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b/g
+
+/** Email addresses */
+const EMAIL_RE = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g
+
+/** URLs (http/https) */
+const URL_RE = /https?:\/\/[^\s"'<>]+/gi
+
+/** Social handles: @username (3+ chars) */
+const SOCIAL_RE = /(?:^|[\s(])@([a-zA-Z0-9_]{3,30})\b/g
+
+/** Platform-specific username patterns (instagram, snapchat, etc.) */
+const PLATFORM_RE =
+  /\b(?:instagram|snapchat|telegram|whatsapp|signal|facebook|tiktok|twitter|venmo|zelle|cashapp)[:\s]+[a-zA-Z0-9_.]{3,30}\b/gi
+
+/** Street addresses: 1234 Main Street, 500 Oak Ave, etc. */
+const ADDRESS_RE =
+  /\b\d{1,5}\s+[a-zA-Z]+\s+(?:street|st|avenue|ave|boulevard|blvd|road|rd|drive|dr|lane|ln|way|court|ct|place|pl|circle|cir)\b/gi
+
+const REDACTED = "[REDACTED]"
+
+interface Detection {
+  type: string
+  original: string
+  replacement: string
+}
+
+function collectMatches(body: string, regex: RegExp, type: string, out: Detection[]) {
+  regex.lastIndex = 0
+  let match: RegExpExecArray | null
+  while ((match = regex.exec(body)) !== null) {
+    out.push({ type, original: match[0].trim(), replacement: REDACTED })
+  }
+}
+
+function redactText(body: string): string {
+  let text = body
+  text = text.replace(URL_RE, REDACTED)
+  text = text.replace(EMAIL_RE, REDACTED)
+  text = text.replace(PHONE_RE, REDACTED)
+  text = text.replace(SOCIAL_RE, (m) => {
+    const prefix = m.charAt(0) === "@" ? "" : m.charAt(0)
+    return prefix + REDACTED
+  })
+  text = text.replace(PLATFORM_RE, REDACTED)
+  text = text.replace(ADDRESS_RE, REDACTED)
+  return text
+}
+
+export class IdentityFirewallService {
+  scan(body: string): {
+    containsSensitiveData: boolean
+    detections: Detection[]
+    redactedText: string
+  } {
+    if (!body) {
+      return { containsSensitiveData: false, detections: [], redactedText: body || "" }
+    }
+
+    const detections: Detection[] = []
+
+    collectMatches(body, PHONE_RE, "phone", detections)
+    collectMatches(body, EMAIL_RE, "email", detections)
+    collectMatches(body, URL_RE, "url", detections)
+
+    // Social handles (@handle and platform:username patterns)
+    SOCIAL_RE.lastIndex = 0
+    let match: RegExpExecArray | null
+    while ((match = SOCIAL_RE.exec(body)) !== null) {
+      detections.push({ type: "social_handle", original: match[0].trim(), replacement: REDACTED })
+    }
+    PLATFORM_RE.lastIndex = 0
+    while ((match = PLATFORM_RE.exec(body)) !== null) {
+      detections.push({ type: "social_handle", original: match[0].trim(), replacement: REDACTED })
+    }
+
+    collectMatches(body, ADDRESS_RE, "address", detections)
+
+    return {
+      containsSensitiveData: detections.length > 0,
+      detections,
+      redactedText: detections.length > 0 ? redactText(body) : body,
+    }
+  }
+}
+
+export const identityFirewallService = new IdentityFirewallService()
