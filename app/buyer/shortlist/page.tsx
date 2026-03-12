@@ -10,7 +10,7 @@ import { useToast } from "@/hooks/use-toast"
 import { extractApiError } from "@/lib/utils/error-message"
 import { useRouter } from "next/navigation"
 import { csrfHeaders } from "@/lib/csrf-client"
-import { Trash2, Gavel, CheckCircle2, AlertCircle, CreditCard, Car } from "lucide-react"
+import { Trash2, Gavel, CheckCircle2, AlertCircle, CreditCard, Car, Globe, Shield, Loader2 } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -20,12 +20,22 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 
+interface MatchStatus {
+  requestId: string
+  matchScore: number
+  networkDealerAvailable: boolean
+  externalSourcingAvailable: boolean
+  invitesSent: number
+  offersReceived: number
+}
+
 export default function BuyerShortlistPage() {
   const [shortlist, setShortlist] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [validation, setValidation] = useState<any>(null)
   const [showStartModal, setShowStartModal] = useState(false)
   const [creatingAuction, setCreatingAuction] = useState(false)
+  const [matchStatuses, setMatchStatuses] = useState<Record<string, MatchStatus>>({})
   const { toast } = useToast()
   const router = useRouter()
 
@@ -37,6 +47,23 @@ export default function BuyerShortlistPage() {
         setValidation(data.data)
       }
     } catch (error) {}
+  }, [])
+
+  // Fetch match status for items in the shortlist
+  const loadMatchStatuses = useCallback(async () => {
+    try {
+      const res = await fetch("/api/buyer/shortlist/match")
+      const data = await res.json()
+      if (data.success && data.data?.matches) {
+        const statusMap: Record<string, MatchStatus> = {}
+        for (const match of data.data.matches) {
+          statusMap[match.inventoryItemId || match.requestId] = match
+        }
+        setMatchStatuses(statusMap)
+      }
+    } catch {
+      // Non-critical: match status is supplementary
+    }
   }, [])
 
   useEffect(() => {
@@ -61,7 +88,8 @@ export default function BuyerShortlistPage() {
 
     loadShortlist()
     validateAuction()
-  }, [toast, validateAuction])
+    loadMatchStatuses()
+  }, [toast, validateAuction, loadMatchStatuses])
 
   const handleRemove = async (inventoryItemId: string) => {
     try {
@@ -244,23 +272,48 @@ export default function BuyerShortlistPage() {
 
             {/* Vehicles Grid */}
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {shortlist.items.map((item: any) => (
-                <div key={item.id} className="relative group">
-                  <VehicleCard
-                    vehicle={item.inventoryItem.vehicle}
-                    inventoryItem={item.inventoryItem}
-                    dealer={item.inventoryItem.dealer}
-                  />
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity"
-                    onClick={() => handleRemove(item.inventoryItemId)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
+              {shortlist.items.map((item: any) => {
+                const matchInfo = matchStatuses[item.inventoryItemId] || matchStatuses[item.id]
+                return (
+                  <div key={item.id} className="relative group">
+                    <VehicleCard
+                      vehicle={item.inventoryItem.vehicle}
+                      inventoryItem={item.inventoryItem}
+                      dealer={item.inventoryItem.dealer}
+                    />
+                    {/* Sourcing / network indicators */}
+                    {matchInfo && (
+                      <div className="absolute bottom-16 left-3 flex gap-1">
+                        {matchInfo.networkDealerAvailable && (
+                          <Badge className="bg-green-100 text-green-800 border-green-200 text-xs gap-1">
+                            <Shield className="h-3 w-3" />
+                            Network
+                          </Badge>
+                        )}
+                        {matchInfo.externalSourcingAvailable && (
+                          <Badge className="bg-blue-100 text-blue-800 border-blue-200 text-xs gap-1">
+                            <Globe className="h-3 w-3" />
+                            Sourcing
+                          </Badge>
+                        )}
+                        {matchInfo.offersReceived > 0 && (
+                          <Badge variant="secondary" className="text-xs">
+                            {matchInfo.offersReceived} offer{matchInfo.offersReceived !== 1 ? "s" : ""}
+                          </Badge>
+                        )}
+                      </div>
+                    )}
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={() => handleRemove(item.inventoryItemId)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )
+              })}
             </div>
           </>
         )}
@@ -292,7 +345,7 @@ export default function BuyerShortlistPage() {
                     <span className="bg-primary text-white rounded-full w-5 h-5 flex items-center justify-center text-xs flex-shrink-0">
                       2
                     </span>
-                    <span>Dealers submit their best offers (they can't see each other's bids)</span>
+                    <span>Dealers submit their best offers (they can&apos;t see each other&apos;s bids)</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="bg-primary text-white rounded-full w-5 h-5 flex items-center justify-center text-xs flex-shrink-0">
@@ -326,7 +379,7 @@ export default function BuyerShortlistPage() {
                     <span className="font-medium">$99 Refundable Deposit Required</span>
                   </div>
                   <p className="text-sm text-yellow-700 mt-1">
-                    This deposit is fully refundable if you don't complete a purchase
+                    This deposit is fully refundable if you don&apos;t complete a purchase
                   </p>
                 </div>
               )}

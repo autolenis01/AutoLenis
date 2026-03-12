@@ -9,16 +9,14 @@ import { StatusPill } from "@/components/dashboard/status-pill"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Gavel, Search, Building2, DollarSign, ArrowRight } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { Gavel, Search, Building2, DollarSign, ArrowRight, Shield, Clock, EyeOff } from "lucide-react"
 import Link from "next/link"
 import useSWR from "swr"
-// import { useSearchParams } from "next/navigation"
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json())
 
 export default function BuyerOffersPage() {
-  // const _searchParams = useSearchParams()
-
   const { data, error, isLoading, mutate } = useSWR("/api/buyer/auctions", fetcher)
 
   // Flatten offers from all auctions
@@ -29,6 +27,18 @@ export default function BuyerOffersPage() {
       vehicle: auction.shortlist?.items?.[0]?.inventoryItem?.vehicle,
     }))
   )
+
+  const getDealerDisplay = (offer: any) => {
+    // Identity masking: before release conditions are met, show anonymous
+    if (offer.identityState === "ANONYMOUS" || offer.identityState === "CONDITIONAL_HOLD") {
+      return { name: "Anonymous Dealer", isAnonymous: true }
+    }
+    // If dealer is in onboarding-pending state
+    if (offer.dealerOnboardingStatus === "pending" || offer.dealerOnboardingStatus === "converting") {
+      return { name: "Dealer (Onboarding)", isAnonymous: true, isPending: true }
+    }
+    return { name: offer.dealer?.name || "Dealer", isAnonymous: false }
+  }
 
   return (
     <ProtectedRoute allowedRoles={["BUYER"]}>
@@ -60,40 +70,70 @@ export default function BuyerOffersPage() {
           />
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {allOffers.map((offer: any) => (
-              <Card key={offer.id} className="hover:shadow-md transition-shadow">
-                <CardContent className="p-6">
-                  <div className="space-y-4">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <h3 className="font-semibold">
-                          {offer.vehicle?.year} {offer.vehicle?.make} {offer.vehicle?.model}
-                        </h3>
-                        <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
-                          <Building2 className="h-3 w-3" />
-                          {offer.dealer?.name || "Dealer"}
-                        </p>
+            {allOffers.map((offer: any) => {
+              const dealerInfo = getDealerDisplay(offer)
+              return (
+                <Card key={offer.id} className="hover:shadow-md transition-shadow">
+                  <CardContent className="p-6">
+                    <div className="space-y-4">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <h3 className="font-semibold">
+                            {offer.vehicle?.year} {offer.vehicle?.make} {offer.vehicle?.model}
+                          </h3>
+                          <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
+                            {dealerInfo.isAnonymous ? (
+                              <>
+                                <EyeOff className="h-3 w-3" />
+                                <span className="italic">{dealerInfo.name}</span>
+                              </>
+                            ) : (
+                              <>
+                                <Building2 className="h-3 w-3" />
+                                {dealerInfo.name}
+                              </>
+                            )}
+                          </p>
+                        </div>
+                        <div className="flex flex-col items-end gap-1">
+                          <StatusPill status={offer.status?.toLowerCase() || "pending"} />
+                          {dealerInfo.isPending && (
+                            <Badge variant="outline" className="text-xs gap-1">
+                              <Clock className="h-3 w-3" />
+                              Onboarding
+                            </Badge>
+                          )}
+                        </div>
                       </div>
-                      <StatusPill status={offer.status?.toLowerCase() || "pending"} />
-                    </div>
 
-                    <div className="flex items-center gap-2">
-                      <DollarSign className="h-5 w-5 text-[#7ED321]" />
-                      <span className="text-2xl font-bold text-[#7ED321]">
-                        {(offer.cashOtd || 0).toLocaleString()}
-                      </span>
-                    </div>
+                      {/* Anonymous dealer notice */}
+                      {dealerInfo.isAnonymous && (
+                        <div className="bg-blue-50 dark:bg-blue-950/20 rounded-lg px-3 py-2 flex items-start gap-2">
+                          <Shield className="h-4 w-4 text-blue-600 flex-shrink-0 mt-0.5" />
+                          <p className="text-xs text-blue-700 dark:text-blue-300">
+                            Dealer identity is protected until deal commitment is confirmed.
+                          </p>
+                        </div>
+                      )}
 
-                    <Button variant="outline" size="sm" className="w-full bg-transparent" asChild>
-                      <Link href={`/buyer/offers/${offer.id}`}>
-                        View Details
-                        <ArrowRight className="h-4 w-4 ml-2" />
-                      </Link>
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                      <div className="flex items-center gap-2">
+                        <DollarSign className="h-5 w-5 text-[#7ED321]" />
+                        <span className="text-2xl font-bold text-[#7ED321]">
+                          {(offer.cashOtd || 0).toLocaleString()}
+                        </span>
+                      </div>
+
+                      <Button variant="outline" size="sm" className="w-full bg-transparent" asChild>
+                        <Link href={`/buyer/offers/${offer.id}`}>
+                          View Details
+                          <ArrowRight className="h-4 w-4 ml-2" />
+                        </Link>
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )
+            })}
           </div>
         )}
       </div>
