@@ -43,3 +43,15 @@ export { SEOService, seoService } from "./seo.service"
 
 // Sourcing Services
 export { SourcingService, sourcingService } from "./sourcing.service"
+
+// Dealer Discovery & Source Services
+export * as dealerDiscoveryService from "./dealer-discovery.service"
+export * as dealerSourceService from "./dealer-source.service"
+
+// Inventory Pipeline Services
+export * as inventoryNormalizeService from "./inventory-normalize.service"
+export * as inventoryDedupeService from "./inventory-dedupe.service"
+
+// Identity & Protection Services
+export * as identityFirewallService from "./identity-firewall.service"
+export * as circumventionMonitorService from "./circumvention-monitor.service"
