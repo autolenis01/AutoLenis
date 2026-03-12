@@ -72,7 +72,7 @@ function createRequest(method = "GET", url = "/api/test", body?: any, headers?: 
     ;(init as any).body = JSON.stringify(body)
     ;(init.headers as Record<string, string>)["content-type"] = "application/json"
   }
-  return new NextRequest(new URL(url, "http://localhost:3000"), init)
+  return new NextRequest(new URL(url, "http://localhost:3000"), init as any)
 }
 
 function makeSignature(payload: string, secret: string): string {
@@ -98,35 +98,32 @@ describe("ESignService", () => {
 
   describe("mock provider production blocking", () => {
     it("blocks mock provider when NODE_ENV is production", async () => {
-      const original = process.env['NODE_ENV']
-      process.env['NODE_ENV'] = "production"
+      vi.stubEnv("NODE_ENV", "production")
       try {
         await expect(
           service.createEnvelope("deal-1", "dealer-1", { provider: "mock" }),
         ).rejects.toThrow("Mock e-sign provider is not available in production")
       } finally {
-        process.env['NODE_ENV'] = original
+        vi.unstubAllEnvs()
       }
     })
 
     it("blocks default provider (mock) when VERCEL_ENV is production", async () => {
-      const origNode = process.env['NODE_ENV']
+      vi.stubEnv("NODE_ENV", "development")
       const origVercel = process.env['VERCEL_ENV']
-      process.env['NODE_ENV'] = "development"
       process.env['VERCEL_ENV'] = "production"
       try {
         await expect(
           service.createEnvelope("deal-1", "dealer-1"),
         ).rejects.toThrow("Mock e-sign provider is not available in production")
       } finally {
-        process.env['NODE_ENV'] = origNode
+        vi.unstubAllEnvs()
         process.env['VERCEL_ENV'] = origVercel
       }
     })
 
     it("allows mock provider in non-production", async () => {
-      const original = process.env['NODE_ENV']
-      process.env['NODE_ENV'] = "development"
+      vi.stubEnv("NODE_ENV", "development")
       delete process.env['VERCEL_ENV']
 
       vi.mocked(prisma.selectedDeal.findUnique).mockResolvedValue(null)
@@ -136,7 +133,7 @@ describe("ESignService", () => {
           service.createEnvelope("deal-1", "dealer-1", { provider: "mock" }),
         ).rejects.toThrow("Deal not found")
       } finally {
-        process.env['NODE_ENV'] = original
+        vi.unstubAllEnvs()
       }
     })
   })

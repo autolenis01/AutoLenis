@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from "vitest"
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { readFileSync } from "fs"
 import { join } from "path"
 import {
@@ -111,12 +111,7 @@ describe("Redis required in production", () => {
   })
 
   afterEach(() => {
-    // Restore original environment
-    if (originalNodeEnv !== undefined) {
-      process.env["NODE_ENV"] = originalNodeEnv
-    } else {
-      delete process.env["NODE_ENV"]
-    }
+    vi.unstubAllEnvs()
     if (originalRedisUrl !== undefined) {
       process.env["REDIS_URL"] = originalRedisUrl
     } else {
@@ -126,7 +121,7 @@ describe("Redis required in production", () => {
   })
 
   it("returns InMemoryCacheAdapter with warning when NODE_ENV=production and REDIS_URL is not set", () => {
-    process.env["NODE_ENV"] = "production"
+    vi.stubEnv("NODE_ENV", "production")
     delete process.env["REDIS_URL"]
 
     // getCacheAdapter() returns adapter even in production (warns but doesn't throw)
@@ -136,7 +131,7 @@ describe("Redis required in production", () => {
   })
 
   it("returns InMemoryCacheAdapter in development when REDIS_URL is not set", () => {
-    process.env["NODE_ENV"] = "development"
+    vi.stubEnv("NODE_ENV", "development")
     delete process.env["REDIS_URL"]
 
     const adapter = getCacheAdapter()
@@ -144,7 +139,7 @@ describe("Redis required in production", () => {
   })
 
   it("returns InMemoryCacheAdapter in test when REDIS_URL is not set", () => {
-    process.env["NODE_ENV"] = "test"
+    vi.stubEnv("NODE_ENV", "test")
     delete process.env["REDIS_URL"]
 
     const adapter = getCacheAdapter()

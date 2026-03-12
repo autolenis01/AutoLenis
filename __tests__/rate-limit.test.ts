@@ -76,11 +76,7 @@ describe("Rate Limiting", () => {
     const originalRedisUrl = process.env["REDIS_URL"]
 
     afterEach(() => {
-      if (originalNodeEnv !== undefined) {
-        process.env["NODE_ENV"] = originalNodeEnv
-      } else {
-        delete process.env["NODE_ENV"]
-      }
+      vi.unstubAllEnvs()
       if (originalRedisUrl !== undefined) {
         process.env["REDIS_URL"] = originalRedisUrl
       } else {
@@ -90,7 +86,7 @@ describe("Rate Limiting", () => {
     })
 
     it("does not return 503 when Redis is unavailable in production", async () => {
-      process.env["NODE_ENV"] = "production"
+      vi.stubEnv("NODE_ENV", "production")
       delete process.env["REDIS_URL"]
       _resetCacheAdapter()
 
@@ -101,7 +97,7 @@ describe("Rate Limiting", () => {
     })
 
     it("logs a critical error when Redis is unavailable in production", async () => {
-      process.env["NODE_ENV"] = "production"
+      vi.stubEnv("NODE_ENV", "production")
       delete process.env["REDIS_URL"]
       _resetCacheAdapter()
 

@@ -152,7 +152,7 @@ describe("P1 · Canonical Status Governance", () => {
     const schema = src("prisma/schema.prisma")
 
     it("AuctionStatus values match Prisma enum", () => {
-      const prismaEnum = schema.match(/enum AuctionStatus \{([^}]+)\}/s)?.[1] ?? ""
+      const prismaEnum = schema.match(/enum AuctionStatus \{([^}]+)\}/)?.[1] ?? ""
       const values = prismaEnum.split(/\s+/).filter(Boolean)
       // Each Prisma value must be in our canonical constant
       for (const v of values) {
@@ -161,7 +161,7 @@ describe("P1 · Canonical Status Governance", () => {
     })
 
     it("PaymentStatus values match Prisma enum", () => {
-      const prismaEnum = schema.match(/enum PaymentStatus \{([^}]+)\}/s)?.[1] ?? ""
+      const prismaEnum = schema.match(/enum PaymentStatus \{([^}]+)\}/)?.[1] ?? ""
       const values = prismaEnum.split(/\s+/).filter(Boolean)
       for (const v of values) {
         expect(statusesSrc).toContain(`${v}: "${v}"`)
@@ -169,7 +169,7 @@ describe("P1 · Canonical Status Governance", () => {
     })
 
     it("PickupStatus values match Prisma enum", () => {
-      const prismaEnum = schema.match(/enum PickupStatus \{([^}]+)\}/s)?.[1] ?? ""
+      const prismaEnum = schema.match(/enum PickupStatus \{([^}]+)\}/)?.[1] ?? ""
       const values = prismaEnum.split(/\s+/).filter(Boolean)
       for (const v of values) {
         expect(statusesSrc).toContain(`${v}: "${v}"`)
@@ -177,7 +177,7 @@ describe("P1 · Canonical Status Governance", () => {
     })
 
     it("ContractStatus values match Prisma enum", () => {
-      const prismaEnum = schema.match(/enum ContractStatus \{([^}]+)\}/s)?.[1] ?? ""
+      const prismaEnum = schema.match(/enum ContractStatus \{([^}]+)\}/)?.[1] ?? ""
       const values = prismaEnum.split(/\s+/).filter(Boolean)
       for (const v of values) {
         expect(statusesSrc).toContain(`${v}: "${v}"`)
@@ -185,7 +185,7 @@ describe("P1 · Canonical Status Governance", () => {
     })
 
     it("DealStatus values match Prisma enum (via deal/types.ts)", () => {
-      const prismaEnum = schema.match(/enum DealStatus \{([^}]+)\}/s)?.[1] ?? ""
+      const prismaEnum = schema.match(/enum DealStatus \{([^}]+)\}/)?.[1] ?? ""
       const values = prismaEnum.split(/\s+/).filter(Boolean)
       const dealTypes = src("lib/services/deal/types.ts")
       for (const v of values) {
