@@ -372,15 +372,15 @@ export async function POST(req: NextRequest) {
 
     // Create import log
     const { data: importLog } = await supabase
-      .from("InventoryImportLog")
+      .from("inventory_import_log")
       .insert({
-        dealerId: dealer.id,
-        userId: user.userId,
-        fileName: file.name,
-        fileSize: file.size,
-        totalRows: rows.length,
-        successRows: result.success,
-        failedRows: result.failed,
+        dealer_id: dealer.id,
+        user_id: user.userId,
+        file_name: file.name,
+        file_size: file.size,
+        total_rows: rows.length,
+        success_rows: result.success,
+        failed_rows: result.failed,
         errors: result.errors,
         status: result.failed === 0 ? "completed" : "partial",
       })

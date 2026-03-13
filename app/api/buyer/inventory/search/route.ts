@@ -73,18 +73,18 @@ export async function GET(req: NextRequest) {
       // 2. Try external pre-approval if no AutoLenis prequal
       if (!buyerMaxOtdCents) {
         const { data: extApproval } = await supabase
-          .from("external_preapproval_submissions")
-          .select("approved_amount, max_otd_amount_cents, expires_at, status")
-          .eq("buyer_id", user.userId)
+          .from("ExternalPreApprovalSubmission")
+          .select("approvedAmount, maxOtdAmountCents, expiresAt, status")
+          .eq("buyerId", user.userId)
           .eq("status", "APPROVED")
-          .gt("expires_at", new Date().toISOString())
-          .order("created_at", { ascending: false })
+          .gt("expiresAt", new Date().toISOString())
+          .order("createdAt", { ascending: false })
           .limit(1)
           .maybeSingle()
 
         if (extApproval) {
-          buyerMaxOtdCents = extApproval.max_otd_amount_cents
-            ?? Math.round((extApproval.approved_amount ?? 0) * 100)
+          buyerMaxOtdCents = extApproval.maxOtdAmountCents
+            ?? Math.round((extApproval.approvedAmount ?? 0) * 100)
           approvalType = "external"
         }
       }
