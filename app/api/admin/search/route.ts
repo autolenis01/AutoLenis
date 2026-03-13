@@ -108,7 +108,7 @@ export async function GET(request: Request) {
     // Search Deals
     try {
       let query = supabase
-        .from("Deal")
+        .from("SelectedDeal")
         .select("id, status")
         .or(`id.ilike.${pattern},status.ilike.${pattern}`)
         .limit(5)

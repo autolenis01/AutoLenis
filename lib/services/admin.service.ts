@@ -773,7 +773,7 @@ export class AdminService {
 
     const [referralsResult, clicksResult, payoutsResult] = await Promise.all([
       supabase.from("Referral").select("affiliateId, level").in("affiliateId", affiliateIds),
-      supabase.from("AffiliateClick").select("affiliateId").in("affiliateId", affiliateIds),
+      supabase.from("Click").select("affiliateId").in("affiliateId", affiliateIds),
       supabase.from("Payout").select("affiliateId, amount").in("affiliateId", affiliateIds),
     ])
 
@@ -1169,7 +1169,7 @@ export class AdminService {
     const dealerIds = dealers.map((d) => d.id)
 
     const [offersResult, dealsResult] = await Promise.all([
-      supabase.from("Offer").select("dealerId").in("dealerId", dealerIds),
+      supabase.from("AuctionParticipant").select("dealerId").in("dealerId", dealerIds),
       supabase.from("SelectedDeal").select("dealerId").in("dealerId", dealerIds),
     ])
 
