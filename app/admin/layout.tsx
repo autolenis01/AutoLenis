@@ -62,6 +62,7 @@ export default async function AdminLayout({
         { href: "/admin/trade-ins", label: "Trade-Ins", icon: "Car" },
         { href: "/admin/sourcing", label: "Sourcing Cases", icon: "Target" },
         { href: "/admin/sourcing?view=exceptions", label: "Exceptions", icon: "AlertTriangle" },
+        { href: "/admin/messages-monitoring", label: "Messages Monitoring", icon: "MessageSquare" },
       ],
     },
     {
