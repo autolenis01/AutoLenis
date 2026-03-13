@@ -114,8 +114,8 @@ function buildStatusStrip(currentStep: LifecycleStep): StatusStripStep[] {
 
 const FEE_PENDING_STATUSES: readonly string[] = ["SELECTED", "FEE_PENDING", "FINANCING_PENDING", "FINANCING_APPROVED"]
 const INSURANCE_PENDING_STATUSES: readonly string[] = ["FEE_PAID", "INSURANCE_PENDING"]
-const CONTRACT_REVIEW_STATUSES: readonly string[] = ["INSURANCE_COMPLETE", "CONTRACT_PENDING", "CONTRACT_REVIEW"]
-const ESIGN_PENDING_STATUSES: readonly string[] = ["CONTRACT_APPROVED", "SIGNING_PENDING"]
+const CONTRACT_REVIEW_STATUSES: readonly string[] = ["INSURANCE_COMPLETE", "CONTRACT_PENDING", "CONTRACT_REVIEW", "CONTRACT_MANUAL_REVIEW_REQUIRED", "CONTRACT_INTERNAL_FIX_IN_PROGRESS"]
+const ESIGN_PENDING_STATUSES: readonly string[] = ["CONTRACT_APPROVED", "CONTRACT_ADMIN_OVERRIDE_APPROVED", "SIGNING_PENDING"]
 const PICKUP_STATUSES: readonly string[] = ["SIGNED", "PICKUP_SCHEDULED"]
 
 // ---------------------------------------------------------------------------
