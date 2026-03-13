@@ -17,6 +17,19 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
+-- Create Supabase built-in roles if they don't already exist (provided by Supabase in production)
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
+    CREATE ROLE anon NOLOGIN NOINHERIT;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+    CREATE ROLE authenticated NOLOGIN NOINHERIT;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
+    CREATE ROLE service_role NOLOGIN NOINHERIT BYPASSRLS;
+  END IF;
+END $$;
+
 
 -- ============================================================
 -- Section 2: Enums
@@ -501,16 +514,6 @@ CREATE TYPE public."WorkspaceMode" AS ENUM (
 -- ============================================================
 -- Section 3: Tables (Prisma-managed + SQL-only)
 -- ============================================================
-
-CREATE SEQUENCE public.schema_migrations_id_seq
-    AS integer
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-ALTER SEQUENCE public.schema_migrations_id_seq OWNED BY public.schema_migrations.id;
 
 CREATE TABLE public."AdminAuditLog" (
     id text NOT NULL,
@@ -1398,6 +1401,36 @@ CREATE TABLE public."EmailSendLog" (
     "createdAt" timestamp(3) without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     "updatedAt" timestamp(3) without time zone NOT NULL
 );
+
+-- email_log: SQL-only email tracking table (used by scripts/100-sync-schema-all-pending.sql)
+CREATE TABLE public.email_log (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    resend_id character varying(255),
+    user_id text,
+    email_type character varying(100) NOT NULL,
+    recipient_email character varying(255) NOT NULL,
+    recipient_name character varying(255),
+    subject text NOT NULL,
+    status character varying(50) DEFAULT 'sent'::character varying NOT NULL,
+    error_message text,
+    metadata jsonb,
+    sent_at timestamp with time zone DEFAULT now() NOT NULL,
+    delivered_at timestamp with time zone,
+    opened_at timestamp with time zone,
+    clicked_at timestamp with time zone,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_email_log_user_id ON public.email_log(user_id);
+CREATE INDEX IF NOT EXISTS idx_email_log_recipient_email ON public.email_log(recipient_email);
+CREATE INDEX IF NOT EXISTS idx_email_log_email_type ON public.email_log(email_type);
+CREATE INDEX IF NOT EXISTS idx_email_log_status ON public.email_log(status);
+CREATE INDEX IF NOT EXISTS idx_email_log_resend_id ON public.email_log(resend_id);
+CREATE INDEX IF NOT EXISTS idx_email_log_sent_at ON public.email_log(sent_at DESC);
+
+ALTER TABLE ONLY public.email_log
+    ADD CONSTRAINT email_log_pkey PRIMARY KEY (id);
 
 CREATE TABLE public."ExternalPreApproval" (
     id text NOT NULL,
@@ -2431,6 +2464,16 @@ CREATE TABLE public.schema_migrations (
     applied_at timestamp with time zone DEFAULT now() NOT NULL,
     description text
 );
+
+CREATE SEQUENCE public.schema_migrations_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+ALTER SEQUENCE public.schema_migrations_id_seq OWNED BY public.schema_migrations.id;
 
 CREATE TABLE public.seo_health (
     id text DEFAULT (gen_random_uuid())::text NOT NULL,
@@ -4395,7 +4438,26 @@ FROM "CaseEventLog";
 -- ============================================================
 
 -- Create auth schema for Supabase RLS helper functions
+-- NOTE: In a Supabase environment, auth.uid() and auth.role() are provided
+-- by the platform. The stubs below ensure the migration is syntactically
+-- valid when applied outside Supabase (e.g., local dev, CI).
 CREATE SCHEMA IF NOT EXISTS auth;
+
+-- Stub: auth.uid() — provided by Supabase in production
+CREATE OR REPLACE FUNCTION auth.uid() RETURNS uuid AS $$
+  SELECT NULLIF(
+    current_setting('request.jwt.claim.sub', true),
+    ''
+  )::uuid;
+$$ LANGUAGE SQL STABLE;
+
+-- Stub: auth.role() — provided by Supabase in production
+CREATE OR REPLACE FUNCTION auth.role() RETURNS text AS $$
+  SELECT COALESCE(
+    current_setting('request.jwt.claim.role', true),
+    'anon'
+  );
+$$ LANGUAGE SQL STABLE;
 
 -- auth.user_id() — extract user ID from JWT (from scripts/02-add-rls-policies.sql)
 CREATE OR REPLACE FUNCTION auth.user_id() RETURNS uuid AS $$
@@ -4567,7 +4629,7 @@ STABLE
 SECURITY DEFINER
 SET search_path = public
 AS $$
-  SELECT id FROM "User" WHERE auth_user_id = auth.uid() LIMIT 1;
+  SELECT id FROM "User" WHERE auth_user_id = auth.uid()::text LIMIT 1;
 $$;
 
 -- public.current_workspace_id() — map auth.uid() to workspaceId (from migrations/101-rls-functions-and-policies.sql)
@@ -4578,7 +4640,7 @@ STABLE
 SECURITY DEFINER
 SET search_path = public
 AS $$
-  SELECT "workspaceId" FROM "User" WHERE auth_user_id = auth.uid() LIMIT 1;
+  SELECT "workspaceId" FROM "User" WHERE auth_user_id = auth.uid()::text LIMIT 1;
 $$;
 
 -- public.is_admin() — check admin via User table (from migrations/101-rls-functions-and-policies.sql)
@@ -4591,7 +4653,7 @@ SET search_path = public
 AS $$
   SELECT EXISTS (
     SELECT 1 FROM "User"
-    WHERE auth_user_id = auth.uid()
+    WHERE auth_user_id = auth.uid()::text
       AND role IN ('ADMIN', 'SUPER_ADMIN')
   );
 $$;
@@ -4715,12 +4777,12 @@ ALTER TABLE ai_leads ENABLE ROW LEVEL SECURITY;
 -- User Table Policies
 CREATE POLICY "Users can view their own data"
   ON "User" FOR SELECT
-  USING (id = auth.user_id() OR auth.is_admin());
+  USING (id = auth.user_id()::text OR auth.is_admin());
 
 CREATE POLICY "Users can update their own data"
   ON "User" FOR UPDATE
-  USING (id = auth.user_id())
-  WITH CHECK (id = auth.user_id());
+  USING (id = auth.user_id()::text)
+  WITH CHECK (id = auth.user_id()::text);
 
 CREATE POLICY "Admins have full access to users"
   ON "User" FOR ALL
@@ -4730,12 +4792,12 @@ CREATE POLICY "Admins have full access to users"
 -- BuyerProfile Policies
 CREATE POLICY "Buyers can view their own profile"
   ON "BuyerProfile" FOR SELECT
-  USING ("userId" = auth.user_id() OR auth.is_admin());
+  USING ("userId" = auth.user_id()::text OR auth.is_admin());
 
 CREATE POLICY "Buyers can update their own profile"
   ON "BuyerProfile" FOR UPDATE
-  USING ("userId" = auth.user_id())
-  WITH CHECK ("userId" = auth.user_id());
+  USING ("userId" = auth.user_id()::text)
+  WITH CHECK ("userId" = auth.user_id()::text);
 
 CREATE POLICY "Admins have full access to buyer profiles"
   ON "BuyerProfile" FOR ALL
@@ -4745,12 +4807,12 @@ CREATE POLICY "Admins have full access to buyer profiles"
 -- Dealer Policies
 CREATE POLICY "Dealers can view their own dealer data"
   ON "Dealer" FOR SELECT
-  USING ("userId" = auth.user_id() OR auth.is_admin());
+  USING ("userId" = auth.user_id()::text OR auth.is_admin());
 
 CREATE POLICY "Dealers can update their own dealer data"
   ON "Dealer" FOR UPDATE
-  USING ("userId" = auth.user_id())
-  WITH CHECK ("userId" = auth.user_id());
+  USING ("userId" = auth.user_id()::text)
+  WITH CHECK ("userId" = auth.user_id()::text);
 
 CREATE POLICY "Admins have full access to dealers"
   ON "Dealer" FOR ALL
@@ -4760,12 +4822,12 @@ CREATE POLICY "Admins have full access to dealers"
 -- Affiliate Policies
 CREATE POLICY "Affiliates can view their own data"
   ON "Affiliate" FOR SELECT
-  USING ("userId" = auth.user_id() OR auth.is_admin());
+  USING ("userId" = auth.user_id()::text OR auth.is_admin());
 
 CREATE POLICY "Affiliates can update their own data"
   ON "Affiliate" FOR UPDATE
-  USING ("userId" = auth.user_id())
-  WITH CHECK ("userId" = auth.user_id());
+  USING ("userId" = auth.user_id()::text)
+  WITH CHECK ("userId" = auth.user_id()::text);
 
 CREATE POLICY "Admins have full access to affiliates"
   ON "Affiliate" FOR ALL
@@ -4781,9 +4843,9 @@ CREATE POLICY "Dealers can view auctions they participated in"
   ON "Auction" FOR SELECT
   USING (
     EXISTS (
-      SELECT 1 FROM "AuctionOffer" ao
-      WHERE ao."auctionId" = "Auction".id
-      AND ao."dealer_id" IN (SELECT id FROM "Dealer" WHERE "userId" = auth.user_id())
+      SELECT 1 FROM "AuctionParticipant" ap
+      WHERE ap."auctionId" = "Auction".id
+      AND ap."dealerId" IN (SELECT id FROM "Dealer" WHERE "userId" = auth.user_id()::text)
     )
   );
 
@@ -4796,14 +4858,20 @@ CREATE POLICY "Admins have full access to auctions"
 CREATE POLICY "Dealers can view their own offers"
   ON "AuctionOffer" FOR SELECT
   USING (
-    "dealer_id" IN (SELECT id FROM "Dealer" WHERE "userId" = auth.user_id())
+    "participantId" IN (
+      SELECT ap.id FROM "AuctionParticipant" ap
+      WHERE ap."dealerId" IN (SELECT id FROM "Dealer" WHERE "userId" = auth.user_id()::text)
+    )
     OR auth.is_admin()
   );
 
 CREATE POLICY "Dealers can create offers"
   ON "AuctionOffer" FOR INSERT
   WITH CHECK (
-    "dealer_id" IN (SELECT id FROM "Dealer" WHERE "userId" = auth.user_id())
+    "participantId" IN (
+      SELECT ap.id FROM "AuctionParticipant" ap
+      WHERE ap."dealerId" IN (SELECT id FROM "Dealer" WHERE "userId" = auth.user_id()::text)
+    )
   );
 
 CREATE POLICY "Admins have full access to auction offers"
@@ -4814,14 +4882,14 @@ CREATE POLICY "Admins have full access to auction offers"
 -- SelectedDeal Policies
 CREATE POLICY "Buyers can view their own deals"
   ON "SelectedDeal" FOR SELECT
-  USING ("buyerId" = auth.user_id() OR auth.is_admin());
+  USING ("buyerId" = auth.user_id()::text OR auth.is_admin());
 
 CREATE POLICY "Dealers can view deals for their inventory"
   ON "SelectedDeal" FOR SELECT
   USING (
     "inventoryItemId" IN (
       SELECT id FROM "InventoryItem"
-      WHERE "dealerId" IN (SELECT id FROM "Dealer" WHERE "userId" = auth.user_id())
+      WHERE "dealerId" IN (SELECT id FROM "Dealer" WHERE "userId" = auth.user_id()::text)
     )
     OR auth.is_admin()
   );
@@ -4839,11 +4907,11 @@ CREATE POLICY "Everyone can view active inventory"
 CREATE POLICY "Dealers can manage their own inventory"
   ON "InventoryItem" FOR ALL
   USING (
-    "dealerId" IN (SELECT id FROM "Dealer" WHERE "userId" = auth.user_id())
+    "dealerId" IN (SELECT id FROM "Dealer" WHERE "userId" = auth.user_id()::text)
     OR auth.is_admin()
   )
   WITH CHECK (
-    "dealerId" IN (SELECT id FROM "Dealer" WHERE "userId" = auth.user_id())
+    "dealerId" IN (SELECT id FROM "Dealer" WHERE "userId" = auth.user_id()::text)
     OR auth.is_admin()
   );
 
@@ -4852,7 +4920,7 @@ DO $$ BEGIN
   CREATE POLICY "Buyers can view their contracts"
     ON "Contract" FOR SELECT
     USING (
-      "dealId" IN (SELECT id FROM "SelectedDeal" WHERE "buyerId" = auth.user_id())
+      "dealId" IN (SELECT id FROM "SelectedDeal" WHERE "buyerId" = auth.user_id()::text)
       OR auth.is_admin()
     );
 EXCEPTION WHEN undefined_table THEN NULL;
@@ -4865,7 +4933,7 @@ DO $$ BEGIN
       "dealId" IN (
         SELECT sd.id FROM "SelectedDeal" sd
         JOIN "InventoryItem" ii ON sd."inventoryItemId" = ii.id
-        WHERE ii."dealerId" IN (SELECT id FROM "Dealer" WHERE "userId" = auth.user_id())
+        WHERE ii."dealerId" IN (SELECT id FROM "Dealer" WHERE "userId" = auth.user_id()::text)
       )
       OR auth.is_admin()
     );
@@ -4884,7 +4952,7 @@ END $$;
 CREATE POLICY "Buyers can view their financing offers"
   ON "FinancingOffer" FOR SELECT
   USING (
-    "dealId" IN (SELECT id FROM "SelectedDeal" WHERE "buyerId" = auth.user_id())
+    "dealId" IN (SELECT id FROM "SelectedDeal" WHERE "buyerId" = auth.user_id()::text)
     OR auth.is_admin()
   );
 
@@ -4897,7 +4965,7 @@ CREATE POLICY "Admins have full access to financing offers"
 CREATE POLICY "Buyers can view their insurance quotes"
   ON "InsuranceQuote" FOR SELECT
   USING (
-    "dealId" IN (SELECT id FROM "SelectedDeal" WHERE "buyerId" = auth.user_id())
+    "buyerId" = auth.user_id()::text
     OR auth.is_admin()
   );
 
@@ -4910,10 +4978,9 @@ CREATE POLICY "Admins have full access to insurance quotes"
 CREATE POLICY "Buyers can view their insurance policies"
   ON "InsurancePolicy" FOR SELECT
   USING (
-    "quoteId" IN (
-      SELECT iq.id FROM "InsuranceQuote" iq
-      JOIN "SelectedDeal" sd ON iq."dealId" = sd.id
-      WHERE sd."buyerId" = auth.user_id()
+    "dealId" IN (
+      SELECT id FROM "SelectedDeal"
+      WHERE "buyerId" = auth.user_id()::text
     )
     OR auth.is_admin()
   );
@@ -4927,7 +4994,7 @@ CREATE POLICY "Admins have full access to insurance policies"
 CREATE POLICY "Buyers can view their pickup appointments"
   ON "PickupAppointment" FOR SELECT
   USING (
-    "dealId" IN (SELECT id FROM "SelectedDeal" WHERE "buyerId" = auth.user_id())
+    "dealId" IN (SELECT id FROM "SelectedDeal" WHERE "buyerId" = auth.user_id()::text)
     OR auth.is_admin()
   );
 
@@ -4937,7 +5004,7 @@ CREATE POLICY "Dealers can view pickup appointments for their deals"
     "dealId" IN (
       SELECT sd.id FROM "SelectedDeal" sd
       JOIN "InventoryItem" ii ON sd."inventoryItemId" = ii.id
-      WHERE ii."dealerId" IN (SELECT id FROM "Dealer" WHERE "userId" = auth.user_id())
+      WHERE ii."dealerId" IN (SELECT id FROM "Dealer" WHERE "userId" = auth.user_id()::text)
     )
     OR auth.is_admin()
   );
@@ -4951,7 +5018,7 @@ CREATE POLICY "Admins have full access to pickup appointments"
 CREATE POLICY "Affiliates can view their referrals"
   ON "Referral" FOR SELECT
   USING (
-    "affiliateId" IN (SELECT id FROM "Affiliate" WHERE "userId" = auth.user_id())
+    "affiliateId" IN (SELECT id FROM "Affiliate" WHERE "userId" = auth.user_id()::text)
     OR auth.is_admin()
   );
 
@@ -4964,7 +5031,7 @@ CREATE POLICY "Admins have full access to referrals"
 CREATE POLICY "Affiliates can view their commissions"
   ON "Commission" FOR SELECT
   USING (
-    "affiliateId" IN (SELECT id FROM "Affiliate" WHERE "userId" = auth.user_id())
+    "affiliateId" IN (SELECT id FROM "Affiliate" WHERE "userId" = auth.user_id()::text)
     OR auth.is_admin()
   );
 
@@ -4977,7 +5044,7 @@ CREATE POLICY "Admins have full access to commissions"
 CREATE POLICY "Affiliates can view their payouts"
   ON "Payout" FOR SELECT
   USING (
-    "affiliateId" IN (SELECT id FROM "Affiliate" WHERE "userId" = auth.user_id())
+    "affiliateId" IN (SELECT id FROM "Affiliate" WHERE "userId" = auth.user_id()::text)
     OR auth.is_admin()
   );
 
@@ -4990,22 +5057,22 @@ CREATE POLICY "Admins have full access to payouts"
 DO $$ BEGIN
   CREATE POLICY "Buyers can view their trade-ins"
     ON "TradeIn" FOR SELECT
-    USING ("userId" = auth.user_id() OR auth.is_admin());
+    USING ("buyerId" = auth.user_id()::text OR auth.is_admin());
 EXCEPTION WHEN undefined_table THEN NULL;
 END $$;
 
 DO $$ BEGIN
   CREATE POLICY "Buyers can create trade-ins"
     ON "TradeIn" FOR INSERT
-    WITH CHECK ("userId" = auth.user_id());
+    WITH CHECK ("buyerId" = auth.user_id()::text);
 EXCEPTION WHEN undefined_table THEN NULL;
 END $$;
 
 DO $$ BEGIN
   CREATE POLICY "Buyers can update their trade-ins"
     ON "TradeIn" FOR UPDATE
-    USING ("userId" = auth.user_id())
-    WITH CHECK ("userId" = auth.user_id());
+    USING ("buyerId" = auth.user_id()::text)
+    WITH CHECK ("buyerId" = auth.user_id()::text);
 EXCEPTION WHEN undefined_table THEN NULL;
 END $$;
 
@@ -5558,15 +5625,15 @@ CREATE POLICY email_log_admin_all ON email_log
   FOR ALL
   USING (
     EXISTS (
-      SELECT 1 FROM users
-      WHERE users.id = auth.uid()
-      AND users.role IN ('ADMIN', 'admin')
+      SELECT 1 FROM "User"
+      WHERE "User".id = auth.uid()::text
+      AND "User".role IN ('ADMIN', 'SUPER_ADMIN')
     )
   );
 
 CREATE POLICY email_log_user_select ON email_log
   FOR SELECT
-  USING (user_id = auth.uid());
+  USING (user_id = auth.uid()::text);
 
 CREATE POLICY email_log_system_insert ON email_log
   FOR INSERT
@@ -5580,17 +5647,17 @@ DROP POLICY IF EXISTS ai_leads_insert               ON ai_leads;
 
 CREATE POLICY ai_seo_drafts_admin ON ai_seo_drafts
   FOR ALL USING (
-    EXISTS (SELECT 1 FROM users WHERE users.id = auth.uid() AND users.role IN ('ADMIN','admin'))
+    EXISTS (SELECT 1 FROM "User" WHERE "User".id = auth.uid()::text AND "User".role IN ('ADMIN','SUPER_ADMIN'))
   );
 
 CREATE POLICY ai_contract_extractions_admin ON ai_contract_extractions
   FOR ALL USING (
-    EXISTS (SELECT 1 FROM users WHERE users.id = auth.uid() AND users.role IN ('ADMIN','admin'))
+    EXISTS (SELECT 1 FROM "User" WHERE "User".id = auth.uid()::text AND "User".role IN ('ADMIN','SUPER_ADMIN'))
   );
 
 CREATE POLICY ai_leads_admin ON ai_leads
   FOR ALL USING (
-    EXISTS (SELECT 1 FROM users WHERE users.id = auth.uid() AND users.role IN ('ADMIN','admin'))
+    EXISTS (SELECT 1 FROM "User" WHERE "User".id = auth.uid()::text AND "User".role IN ('ADMIN','SUPER_ADMIN'))
   );
 
 CREATE POLICY ai_leads_insert ON ai_leads
@@ -5708,48 +5775,63 @@ DROP FUNCTION IF EXISTS _create_ws_select_policy(TEXT);
 
 -- ============================================================
 -- Section 10: Storage Buckets + Policies
+-- NOTE: The storage schema is provided by Supabase. These statements
+-- will only execute when the storage schema exists (i.e., in Supabase).
 -- ============================================================
 
--- buyer-documents bucket
-INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-VALUES (
-  'buyer-documents', 'buyer-documents', FALSE, 26214400,
-  ARRAY['application/pdf','image/jpeg','image/jpg','image/png','image/webp']
-) ON CONFLICT (id) DO UPDATE SET
-  file_size_limit = EXCLUDED.file_size_limit,
-  allowed_mime_types = EXCLUDED.allowed_mime_types;
+DO $storage$
+BEGIN
+  -- Only run storage setup if the storage schema exists (Supabase environment)
+  IF EXISTS (SELECT 1 FROM information_schema.schemata WHERE schema_name = 'storage') THEN
+    -- buyer-documents bucket
+    INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+    VALUES (
+      'buyer-documents', 'buyer-documents', FALSE, 26214400,
+      ARRAY['application/pdf','image/jpeg','image/jpg','image/png','image/webp']
+    ) ON CONFLICT (id) DO UPDATE SET
+      file_size_limit = EXCLUDED.file_size_limit,
+      allowed_mime_types = EXCLUDED.allowed_mime_types;
 
--- affiliate-documents bucket
-INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-VALUES (
-  'affiliate-documents', 'affiliate-documents', FALSE, 10485760,
-  ARRAY['application/pdf','image/jpeg','image/jpg','image/png']
-) ON CONFLICT (id) DO UPDATE SET
-  file_size_limit = EXCLUDED.file_size_limit,
-  allowed_mime_types = EXCLUDED.allowed_mime_types;
+    -- affiliate-documents bucket
+    INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+    VALUES (
+      'affiliate-documents', 'affiliate-documents', FALSE, 10485760,
+      ARRAY['application/pdf','image/jpeg','image/jpg','image/png']
+    ) ON CONFLICT (id) DO UPDATE SET
+      file_size_limit = EXCLUDED.file_size_limit,
+      allowed_mime_types = EXCLUDED.allowed_mime_types;
 
--- buyer-docs bucket (used by external-preapproval service)
-INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-VALUES (
-  'buyer-docs', 'buyer-docs', FALSE, 26214400,
-  ARRAY['application/pdf','image/jpeg','image/jpg','image/png','image/webp']
-) ON CONFLICT (id) DO UPDATE SET
-  file_size_limit = EXCLUDED.file_size_limit,
-  allowed_mime_types = EXCLUDED.allowed_mime_types;
+    -- buyer-docs bucket (used by external-preapproval service)
+    INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+    VALUES (
+      'buyer-docs', 'buyer-docs', FALSE, 26214400,
+      ARRAY['application/pdf','image/jpeg','image/jpg','image/png','image/webp']
+    ) ON CONFLICT (id) DO UPDATE SET
+      file_size_limit = EXCLUDED.file_size_limit,
+      allowed_mime_types = EXCLUDED.allowed_mime_types;
 
--- Storage RLS — buyer-documents bucket
-DROP POLICY IF EXISTS "buyer-documents: service role all" ON storage.objects;
-CREATE POLICY "buyer-documents: service role all"
-  ON storage.objects FOR ALL
-  USING     (bucket_id = 'buyer-documents' AND auth.role() = 'service_role')
-  WITH CHECK (bucket_id = 'buyer-documents' AND auth.role() = 'service_role');
+    -- Storage RLS — buyer-documents bucket
+    DROP POLICY IF EXISTS "buyer-documents: service role all" ON storage.objects;
+    CREATE POLICY "buyer-documents: service role all"
+      ON storage.objects FOR ALL
+      USING     (bucket_id = 'buyer-documents' AND auth.role() = 'service_role')
+      WITH CHECK (bucket_id = 'buyer-documents' AND auth.role() = 'service_role');
 
--- Storage RLS — affiliate-documents bucket
-DROP POLICY IF EXISTS "affiliate-documents: service role all" ON storage.objects;
-CREATE POLICY "affiliate-documents: service role all"
-  ON storage.objects FOR ALL
-  USING     (bucket_id = 'affiliate-documents' AND auth.role() = 'service_role')
-  WITH CHECK (bucket_id = 'affiliate-documents' AND auth.role() = 'service_role');
+    -- Storage RLS — affiliate-documents bucket
+    DROP POLICY IF EXISTS "affiliate-documents: service role all" ON storage.objects;
+    CREATE POLICY "affiliate-documents: service role all"
+      ON storage.objects FOR ALL
+      USING     (bucket_id = 'affiliate-documents' AND auth.role() = 'service_role')
+      WITH CHECK (bucket_id = 'affiliate-documents' AND auth.role() = 'service_role');
+
+    -- Storage RLS — buyer-docs bucket
+    DROP POLICY IF EXISTS "buyer-docs: service role all" ON storage.objects;
+    CREATE POLICY "buyer-docs: service role all"
+      ON storage.objects FOR ALL
+      USING     (bucket_id = 'buyer-docs' AND auth.role() = 'service_role')
+      WITH CHECK (bucket_id = 'buyer-docs' AND auth.role() = 'service_role');
+  END IF;
+END $storage$;
 
 
 -- ============================================================
