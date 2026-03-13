@@ -99,6 +99,26 @@ export function ContractShieldStatus({ compact = false }: ContractShieldStatusPr
 
   // Get status info
   const getStatusConfig = () => {
+    // CMA-specific deal status messaging — takes priority over scan status
+    if (deal?.status === "CONTRACT_MANUAL_REVIEW_REQUIRED" || deal?.status === "CONTRACT_INTERNAL_FIX_IN_PROGRESS") {
+      return {
+        icon: Clock,
+        iconClass: "text-blue-600",
+        bgClass: "bg-blue-50 border-blue-200",
+        label: "Verifying",
+        description: "We\u2019re completing a manual verification to ensure your contract is accurate before you sign.",
+      }
+    }
+    if (deal?.status === "CONTRACT_ADMIN_OVERRIDE_APPROVED") {
+      return {
+        icon: ShieldCheck,
+        iconClass: "text-green-600",
+        bgClass: "bg-green-50 border-green-200",
+        label: "Verified",
+        description: "Verified and approved \u2014 ready to sign.",
+      }
+    }
+
     if (!scan) {
       if (documents.length > 0) {
         return {

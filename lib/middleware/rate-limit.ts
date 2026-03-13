@@ -151,4 +151,10 @@ export const rateLimits = {
     maxRequests: 60,
     windowMs: 60 * 60 * 1000, // 1 hour
   },
+  // CMA approval actions: 20 per day per admin (abuse prevention)
+  cmaApproval: {
+    maxRequests: 20,
+    windowMs: 24 * 60 * 60 * 1000, // 24 hours
+    securityCritical: true,
+  },
 }

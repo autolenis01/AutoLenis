@@ -81,6 +81,7 @@ model Workspace {
   consentArtifacts               ConsentArtifact[]
   preQualProviderEvents          PreQualProviderEvent[]
   forwardingAuthorizations       ForwardingAuthorization[]
+  contractManualReviews          ContractManualReview[]
 
   @@index([mode])
 }
@@ -95,6 +96,7 @@ enum UserRole {
   DEALER_USER
   ADMIN
   SUPER_ADMIN
+  COMPLIANCE_ADMIN
   AFFILIATE
   AFFILIATE_ONLY
   SYSTEM_AGENT
@@ -132,6 +134,9 @@ model User {
   affiliateProfile    Affiliate?
   contractOverrides   ContractShieldOverride[]
   shieldNotifications ContractShieldNotification[]
+  cmaApprovedReviews  ContractManualReview[] @relation("CmaApprovedBy")
+  cmaSecondApprovals  ContractManualReview[] @relation("CmaSecondApprover")
+  cmaRevokedReviews   ContractManualReview[] @relation("CmaRevokedBy")
 
   @@index([email])
   @@index([workspaceId])
@@ -799,6 +804,9 @@ enum DealStatus {
   INSURANCE_COMPLETE
   CONTRACT_PENDING
   CONTRACT_REVIEW
+  CONTRACT_MANUAL_REVIEW_REQUIRED
+  CONTRACT_INTERNAL_FIX_IN_PROGRESS
+  CONTRACT_ADMIN_OVERRIDE_APPROVED
   CONTRACT_APPROVED
   SIGNING_PENDING
   SIGNED
@@ -845,6 +853,7 @@ model SelectedDeal {
   insurancePolicy   InsurancePolicy?
   contracts         ContractDocument[]
   scan              ContractShieldScan?
+  manualReviews     ContractManualReview[]
   eSignEnvelope     ESignEnvelope?
   pickup            PickupAppointment?
   tradeIn           TradeIn? // Added relation to TradeIn
@@ -1089,6 +1098,7 @@ model ContractDocument {
 
   // Relations
   scan ContractShieldScan?
+  manualReviews ContractManualReview[]
 
   @@index([dealId])
   @@index([dealerId])
@@ -1126,6 +1136,7 @@ model ContractShieldScan {
   overrides     ContractShieldOverride[]
   notifications ContractShieldNotification[]
   fixList       FixListItem[]
+  manualReviews ContractManualReview[]
 
   @@index([dealId])
   @@index([dealerId])
@@ -1242,8 +1253,107 @@ model ContractShieldReconciliation {
 }
 
 // ============================================
-// SYSTEM 8: E-SIGNATURE
+// CONTRACT MANUAL REVIEW (CMA)
 // ============================================
+
+enum ManualReviewStatus {
+  OPEN
+  PENDING_SECOND_APPROVAL
+  APPROVED
+  RETURNED_INTERNAL_FIX
+  REVOKED
+}
+
+enum ManualApprovalMode {
+  MANUAL_VALIDATED
+  EXCEPTION_OVERRIDE
+  RETURN_TO_INTERNAL_FIX
+}
+
+enum CmaRootCauseCategory {
+  FALSE_POSITIVE_SCAN
+  INTERNAL_DATA_MISMATCH
+  DEPENDENCY_FAILURE
+  POLICY_RULES_DISCREPANCY
+  MISSING_INTERNAL_ATTESTATION
+  OTHER
+}
+
+enum CmaInternalFixQueue {
+  OPS
+  ENGINEERING
+  POLICY
+}
+
+model ContractManualReview {
+  id          String       @id @default(cuid())
+  workspaceId String?
+  workspace   Workspace?   @relation(fields: [workspaceId], references: [id])
+
+  dealId              String
+  deal                SelectedDeal       @relation(fields: [dealId], references: [id])
+  contractDocumentId  String?
+  contractDocument    ContractDocument?  @relation(fields: [contractDocumentId], references: [id])
+  overriddenScanId    String?
+  overriddenScan      ContractShieldScan? @relation(fields: [overriddenScanId], references: [id])
+
+  status            ManualReviewStatus     @default(OPEN)
+  rootCauseCategory CmaRootCauseCategory?
+  rootCauseNotes    String?                @db.Text
+  approvalMode      ManualApprovalMode?
+
+  // Verified fields JSON — structured checklist data
+  verifiedFieldsJson Json?
+
+  // Evidence attachments (stored as array of file URLs/IDs)
+  evidenceAttachmentIds String[]
+
+  // Boolean checklist gates
+  vinMatch             Boolean @default(false)
+  buyerIdentityMatch   Boolean @default(false)
+  otdMathValidated     Boolean @default(false)
+  feesValidated        Boolean @default(false)
+  termsValidated       Boolean @default(false)
+  disclosuresPresent   Boolean @default(false)
+
+  // Attestation
+  attestationAccepted     Boolean  @default(false)
+  attestationTextVersion  String?
+
+  // Primary approver
+  approvedByAdminId String?
+  approvedByAdmin   User?     @relation("CmaApprovedBy", fields: [approvedByAdminId], references: [id])
+  approvedAt        DateTime?
+  approvedFromIp    String?
+  approvedUserAgent String?
+
+  // Second approver (dual approval)
+  secondApproverAdminId String?
+  secondApproverAdmin   User?     @relation("CmaSecondApprover", fields: [secondApproverAdminId], references: [id])
+  secondApprovedAt      DateTime?
+
+  // Revocation
+  revokedAt       DateTime?
+  revokedReason   String?   @db.Text
+  revokedByAdminId String?
+  revokedByAdmin   User?    @relation("CmaRevokedBy", fields: [revokedByAdminId], references: [id])
+
+  // Internal fix routing
+  assignedQueue CmaInternalFixQueue?
+
+  // Document integrity — hash at time of approval
+  documentHashAtApproval String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([dealId])
+  @@index([contractDocumentId])
+  @@index([overriddenScanId])
+  @@index([status])
+  @@index([workspaceId])
+  @@index([createdAt])
+}
 
 enum ESignStatus {
   CREATED

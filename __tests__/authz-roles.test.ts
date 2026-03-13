@@ -15,13 +15,14 @@ import {
 
 describe("Canonical Roles", () => {
   describe("Role constants", () => {
-    it("should define all 8 roles", () => {
-      expect(Object.keys(Roles)).toHaveLength(8)
+    it("should define all 9 roles", () => {
+      expect(Object.keys(Roles)).toHaveLength(9)
       expect(Roles.BUYER).toBe("BUYER")
       expect(Roles.DEALER).toBe("DEALER")
       expect(Roles.DEALER_USER).toBe("DEALER_USER")
       expect(Roles.ADMIN).toBe("ADMIN")
       expect(Roles.SUPER_ADMIN).toBe("SUPER_ADMIN")
+      expect(Roles.COMPLIANCE_ADMIN).toBe("COMPLIANCE_ADMIN")
       expect(Roles.AFFILIATE).toBe("AFFILIATE")
       expect(Roles.AFFILIATE_ONLY).toBe("AFFILIATE_ONLY")
       expect(Roles.SYSTEM_AGENT).toBe("SYSTEM_AGENT")
@@ -29,10 +30,11 @@ describe("Canonical Roles", () => {
   })
 
   describe("Role groups", () => {
-    it("ADMIN_ROLES includes ADMIN and SUPER_ADMIN", () => {
+    it("ADMIN_ROLES includes ADMIN, SUPER_ADMIN, and COMPLIANCE_ADMIN", () => {
       expect(ADMIN_ROLES).toContain("ADMIN")
       expect(ADMIN_ROLES).toContain("SUPER_ADMIN")
-      expect(ADMIN_ROLES).toHaveLength(2)
+      expect(ADMIN_ROLES).toContain("COMPLIANCE_ADMIN")
+      expect(ADMIN_ROLES).toHaveLength(3)
     })
 
     it("DEALER_ROLES includes DEALER and DEALER_USER", () => {
@@ -62,6 +64,7 @@ describe("Canonical Roles", () => {
   describe("isAdminRole", () => {
     it("returns true for ADMIN", () => expect(isAdminRole("ADMIN")).toBe(true))
     it("returns true for SUPER_ADMIN", () => expect(isAdminRole("SUPER_ADMIN")).toBe(true))
+    it("returns true for COMPLIANCE_ADMIN", () => expect(isAdminRole("COMPLIANCE_ADMIN")).toBe(true))
     it("returns false for BUYER", () => expect(isAdminRole("BUYER")).toBe(false))
     it("returns false for DEALER", () => expect(isAdminRole("DEALER")).toBe(false))
     it("returns false for undefined", () => expect(isAdminRole(undefined)).toBe(false))

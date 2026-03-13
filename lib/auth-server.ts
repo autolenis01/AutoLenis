@@ -159,4 +159,4 @@ export async function verifyPassword(password: string, hashedPassword: string): 
 // without 80+ import-path changes.
 //
 // The **canonical source** of truth is `lib/authz/roles.ts`.
-export { isAdminRole, isUserAffiliate as isAffiliateRole } from "@/lib/authz/roles"
+export { isAdminRole, isCmaApprover, isUserAffiliate as isAffiliateRole } from "@/lib/authz/roles"

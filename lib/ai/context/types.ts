@@ -16,7 +16,7 @@ export type OffersStatus = "NONE" | "PENDING" | "READY"
 export type DealStatus = "NONE" | "SELECTED" | "IN_CONTRACT" | "SIGNED" | "COMPLETED"
 export type PaymentStatus = "PAID" | "DUE" | "NA"
 export type InsuranceStatus = "NOT_STARTED" | "IN_PROGRESS" | "COMPLETE"
-export type ContractShieldStatus = "NOT_UPLOADED" | "PASS" | "REJECT" | "MANUAL_REVIEW"
+export type ContractShieldStatus = "NOT_UPLOADED" | "PASS" | "REJECT" | "MANUAL_REVIEW" | "INTERNAL_FIX" | "OVERRIDE_APPROVED"
 export type EsignStatus = "NOT_SENT" | "SENT" | "SIGNED"
 export type PickupStatus = "NOT_SCHEDULED" | "SCHEDULED" | "COMPLETED"
 

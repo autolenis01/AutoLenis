@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db"
 import { logEvent } from "./helpers"
+import { revokeIfDocsChanged } from "./manual-review"
 import type { DocumentType } from "./types"
 
 export async function uploadDocument(
@@ -57,6 +58,9 @@ export async function uploadDocument(
     version,
     dealerId,
   })
+
+  // CMA post-approval integrity: auto-revoke if document changed after manual approval
+  await revokeIfDocsChanged(selectedDealId, document.id, fileUrl, version)
 
   return { document, scan }
 }

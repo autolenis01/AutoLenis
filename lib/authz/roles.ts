@@ -15,6 +15,7 @@ export const Roles = {
   DEALER_USER: "DEALER_USER",
   ADMIN: "ADMIN",
   SUPER_ADMIN: "SUPER_ADMIN",
+  COMPLIANCE_ADMIN: "COMPLIANCE_ADMIN",
   AFFILIATE: "AFFILIATE",
   AFFILIATE_ONLY: "AFFILIATE_ONLY",
   SYSTEM_AGENT: "SYSTEM_AGENT",
@@ -27,7 +28,10 @@ export type Role = (typeof Roles)[keyof typeof Roles]
 // For API-guard arrays that also include admin overrides, see `guard.ts`.
 
 /** Roles that have admin-level access */
-export const ADMIN_ROLES: readonly Role[] = [Roles.ADMIN, Roles.SUPER_ADMIN] as const
+export const ADMIN_ROLES: readonly Role[] = [Roles.ADMIN, Roles.SUPER_ADMIN, Roles.COMPLIANCE_ADMIN] as const
+
+/** Roles that may perform CMA approval actions */
+export const CMA_APPROVER_ROLES: readonly Role[] = [Roles.COMPLIANCE_ADMIN, Roles.SUPER_ADMIN] as const
 
 /** Roles that may access the dealer portal */
 export const DEALER_ROLES: readonly Role[] = [Roles.DEALER, Roles.DEALER_USER] as const
@@ -49,9 +53,14 @@ export const PUBLIC_SIGNIN_ROLES: readonly Role[] = [
 
 // ─── Role check helpers (string-based) ───────────────────────────────────────
 
-/** Returns true if `role` is ADMIN or SUPER_ADMIN. */
+/** Returns true if `role` is ADMIN, SUPER_ADMIN, or COMPLIANCE_ADMIN. */
 export function isAdminRole(role: string | undefined): boolean {
   return (ADMIN_ROLES as readonly string[]).includes(role ?? "")
+}
+
+/** Returns true if `role` is COMPLIANCE_ADMIN or SUPER_ADMIN (CMA approver). */
+export function isCmaApprover(role: string | undefined): boolean {
+  return (CMA_APPROVER_ROLES as readonly string[]).includes(role ?? "")
 }
 
 /** Returns true if `role` is DEALER or DEALER_USER. */
