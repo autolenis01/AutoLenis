@@ -154,7 +154,7 @@ export async function uploadExternalInsuranceProof(
     storageSource: "SUPABASE_STORAGE",
     storageReference: documentUrl,
     uploaderId: userId,
-    fileHash: crypto.randomUUID(),
+    fileHash: `ext-ins-${dealId}-${Date.now()}`,
     accessScope: AccessScope.DEAL_PARTIES,
   }).catch(() => { /* non-critical */ })
 

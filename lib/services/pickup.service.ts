@@ -459,15 +459,14 @@ export class PickupService {
     // Emit canonical platform event (non-blocking)
     writeEventAsync({
       eventType: PlatformEventType.DEAL_STATUS_CHANGED,
-      entityType: EntityType.PICKUP,
-      entityId: appointmentId,
-      parentEntityId: selectedDealId || undefined,
+      entityType: EntityType.DEAL,
+      entityId: selectedDealId || appointmentId,
       actorId: dealerUserId,
       actorType: ActorType.DEALER,
       sourceModule: "pickup.service",
       correlationId: crypto.randomUUID(),
       idempotencyKey: `pickup-cancelled-${appointmentId}`,
-      payload: { status: "CANCELLED", reason },
+      payload: { status: "CANCELLED", reason, appointmentId },
     }).catch(() => { /* non-critical */ })
 
     return {
