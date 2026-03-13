@@ -141,6 +141,8 @@ CREATE POLICY "InventoryImportLog: service role bypass"
 -- --------------------------------------------------------------------------
 -- 7. Migrate data from snake_case to PascalCase tables (if source exists)
 -- --------------------------------------------------------------------------
+
+-- seo_pages → SeoPages
 DO $$
 BEGIN
   IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'seo_pages')
@@ -152,6 +154,48 @@ BEGIN
       canonical_url, og_title, og_description, og_image_url, robots_rule,
       indexable, created_at, updated_at
     FROM seo_pages
+    ON CONFLICT ("pageKey") DO NOTHING;
+  END IF;
+END $$;
+
+-- seo_schema → SeoSchema
+DO $$
+BEGIN
+  IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'seo_schema')
+    AND NOT EXISTS (SELECT 1 FROM "SeoSchema" LIMIT 1) THEN
+    INSERT INTO "SeoSchema" ("id", "pageKey", "schemaType", "schemaJson",
+      "createdAt", "updatedAt")
+    SELECT id, page_key, schema_type, schema_json,
+      created_at, updated_at
+    FROM seo_schema
+    ON CONFLICT ("pageKey", "schemaType") DO NOTHING;
+  END IF;
+END $$;
+
+-- seo_health → SeoHealth
+DO $$
+BEGIN
+  IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'seo_health')
+    AND NOT EXISTS (SELECT 1 FROM "SeoHealth" LIMIT 1) THEN
+    INSERT INTO "SeoHealth" ("id", "pageKey", "score", "issuesJson",
+      "lastScanAt", "createdAt")
+    SELECT id, page_key, score, issues_json,
+      last_scan_at, created_at
+    FROM seo_health
+    ON CONFLICT ("pageKey") DO NOTHING;
+  END IF;
+END $$;
+
+-- seo_keywords → SeoKeywords
+DO $$
+BEGIN
+  IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'seo_keywords')
+    AND NOT EXISTS (SELECT 1 FROM "SeoKeywords" LIMIT 1) THEN
+    INSERT INTO "SeoKeywords" ("id", "pageKey", "primaryKeyword", "secondaryKeywords",
+      "targetDensity", "actualDensity", "createdAt", "updatedAt")
+    SELECT id, page_key, primary_keyword, secondary_keywords,
+      target_density, actual_density, created_at, updated_at
+    FROM seo_keywords
     ON CONFLICT ("pageKey") DO NOTHING;
   END IF;
 END $$;

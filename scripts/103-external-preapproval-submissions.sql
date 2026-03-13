@@ -103,6 +103,8 @@ ON CONFLICT (id) DO UPDATE SET
   allowed_mime_types = EXCLUDED.allowed_mime_types;
 
 -- Storage RLS — buyer-docs bucket
+-- Note: This policy is on the global storage.objects table and uses bucket_id
+-- filter for isolation. This is the standard Supabase pattern for storage policies.
 DROP POLICY IF EXISTS "buyer-docs: service role all" ON storage.objects;
 CREATE POLICY "buyer-docs: service role all"
   ON storage.objects FOR ALL

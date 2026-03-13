@@ -18,6 +18,7 @@ SELECT
   pq."maxOtdAmountCents"        AS max_otd_amount_cents,
   pq."minMonthlyPaymentCents"   AS min_monthly_payment_cents,
   pq."maxMonthlyPaymentCents"   AS max_monthly_payment_cents,
+  -- dtiRatio is the canonical field; dti is a legacy alias kept for migration compatibility
   COALESCE(pq."dtiRatio", pq."dti") AS dti_ratio,
   pq."expiresAt"                AS expires_at,
   pq."providerName"             AS provider_name,
