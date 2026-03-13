@@ -726,17 +726,18 @@ export class InsuranceService {
 
     // If verified, update trust record for the insurance document (non-blocking)
     if (verified && policy.documentUrl) {
-      const trustRecords = await prisma.$queryRaw<Array<{ id: string }>>`
-        SELECT "id" FROM "trusted_documents"
-        WHERE "ownerEntityId" = ${dealId}
-          AND "documentType" = 'INSURANCE_PROOF'
-          AND "activeForDecision" = true
-        ORDER BY "createdAt" DESC
-        LIMIT 1
-      `
-      if (trustRecords.length > 0) {
+      const trustRecord = await prisma.documentTrustRecord.findFirst({
+        where: {
+          ownerEntityId: dealId,
+          documentType: "INSURANCE_PROOF",
+          activeForDecision: true,
+        },
+        orderBy: { createdAt: "desc" },
+        select: { id: true },
+      })
+      if (trustRecord) {
         verifyDocument({
-          documentId: trustRecords[0].id,
+          documentId: trustRecord.id,
           verifierId: adminUserId,
           status: DocumentTrustStatus.APPROVED,
           verificationMetadata: { adminAction: "EXTERNAL_POLICY_VERIFICATION", policyId },
