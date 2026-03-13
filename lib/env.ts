@@ -31,6 +31,16 @@ const envSchema = z.object({
   FROM_EMAIL: z.string().email("FROM_EMAIL must be a valid email address (verified Resend sender)").optional(),
   RESEND_FROM_EMAIL: z.string().email("RESEND_FROM_EMAIL must be a valid email address").optional(),
 
+  // Supabase (Optional — set by Vercel-Supabase integration)
+  SUPABASE_URL: z.string().url("SUPABASE_URL must be a valid URL").optional(),
+  SUPABASE_JWT_SECRET: z.string().min(1).optional(),
+
+  // Webhooks (Optional — needed only when e-sign webhooks are configured)
+  ESIGN_WEBHOOK_SECRET: z.string().min(1).optional(),
+
+  // AI / Gemini (Optional — needed for AI assistant features)
+  GEMINI_API_KEY: z.string().min(1).optional(),
+
   // Optional but recommended
   NEXT_PUBLIC_APP_URL: z.string().url().optional(),
   ADMIN_NOTIFICATION_EMAIL: z.string().email().optional(),
