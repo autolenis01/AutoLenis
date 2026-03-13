@@ -59,7 +59,6 @@ describe("Event Ledger", () => {
     it("assigns an event ID", () => {
       const result = writeEvent(makeEventInput())
       expect(result.event?.id).toBeDefined()
-      expect(result.event?.id).toBeDefined()
       expect(typeof result.event?.id).toBe("string")
     })
 

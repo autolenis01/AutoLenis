@@ -75,7 +75,6 @@ describe("Trust Infrastructure", () => {
       it("assigns an ID", () => {
         const result = createDocumentTrustRecord(makeDocInput())
         expect(result.record?.id).toBeDefined()
-        expect(result.record?.id).toBeDefined()
         expect(typeof result.record?.id).toBe("string")
       })
 
@@ -394,7 +393,6 @@ describe("Trust Infrastructure", () => {
           entityId: "buyer-1",
           entityType: OwnerEntityType.BUYER,
         })
-        expect(result.record?.id).toBeDefined()
         expect(result.record?.id).toBeDefined()
         expect(typeof result.record?.id).toBe("string")
       })
