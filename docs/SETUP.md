@@ -106,6 +106,10 @@ npx prisma db push
 psql $POSTGRES_URL < scripts/01-initialize-database.sql
 \`\`\`
 
+## Supabase ↔ GitHub Integration
+
+To link your Supabase project to this GitHub repository (enables database branching and preview environments), follow the [Supabase GitHub Integration Guide](SUPABASE_GITHUB_INTEGRATION.md).
+
 ## Verify Setup
 
 ### Check Database Connection

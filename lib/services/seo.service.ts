@@ -39,23 +39,39 @@ export interface SEOKeywords {
   actualDensity: number
 }
 
-/* ── snake_case ↔ camelCase row mappers ─────────────────────── */
+// ---------------------------------------------------------------------------
+// Column mapping helpers: canonical DB uses snake_case, TypeScript uses camelCase
+// ---------------------------------------------------------------------------
 
 function mapPageRow(row: Record<string, any>): SEOPageData {
   return {
     id: row.id,
     pageKey: row.page_key,
-    title: row.title ?? null,
-    description: row.description ?? null,
-    keywords: row.keywords ?? null,
-    canonicalUrl: row.canonical_url ?? null,
-    ogTitle: row.og_title ?? null,
-    ogDescription: row.og_description ?? null,
-    ogImageUrl: row.og_image_url ?? null,
+    title: row.title,
+    description: row.description,
+    keywords: row.keywords,
+    canonicalUrl: row.canonical_url,
+    ogTitle: row.og_title,
+    ogDescription: row.og_description,
+    ogImageUrl: row.og_image_url,
     robotsRule: row.robots_rule ?? "index, follow",
     indexable: row.indexable ?? true,
-    updatedAt: row.updated_at ? new Date(row.updated_at) : new Date(),
+    updatedAt: row.updated_at,
   }
+}
+
+function toPageDbRow(data: Partial<SEOPageData>): Record<string, any> {
+  const row: Record<string, any> = {}
+  if (data.title !== undefined) row.title = data.title
+  if (data.description !== undefined) row.description = data.description
+  if (data.keywords !== undefined) row.keywords = data.keywords
+  if (data.canonicalUrl !== undefined) row.canonical_url = data.canonicalUrl
+  if (data.ogTitle !== undefined) row.og_title = data.ogTitle
+  if (data.ogDescription !== undefined) row.og_description = data.ogDescription
+  if (data.ogImageUrl !== undefined) row.og_image_url = data.ogImageUrl
+  if (data.robotsRule !== undefined) row.robots_rule = data.robotsRule
+  if (data.indexable !== undefined) row.indexable = data.indexable
+  return row
 }
 
 function mapSchemaRow(row: Record<string, any>): SEOSchema {
@@ -79,25 +95,11 @@ function mapHealthRow(row: Record<string, any>): SEOHealth {
 function mapKeywordsRow(row: Record<string, any>): SEOKeywords {
   return {
     pageKey: row.page_key,
-    primaryKeyword: row.primary_keyword ?? null,
+    primaryKeyword: row.primary_keyword,
     secondaryKeywords: (row.secondary_keywords as string[]) || [],
     targetDensity: Number(row.target_density),
     actualDensity: Number(row.actual_density),
   }
-}
-
-function pageDataToRow(data: Partial<SEOPageData>): Record<string, any> {
-  const row: Record<string, any> = {}
-  if (data.title !== undefined) row.title = data.title
-  if (data.description !== undefined) row.description = data.description
-  if (data.keywords !== undefined) row.keywords = data.keywords
-  if (data.canonicalUrl !== undefined) row.canonical_url = data.canonicalUrl
-  if (data.ogTitle !== undefined) row.og_title = data.ogTitle
-  if (data.ogDescription !== undefined) row.og_description = data.ogDescription
-  if (data.ogImageUrl !== undefined) row.og_image_url = data.ogImageUrl
-  if (data.robotsRule !== undefined) row.robots_rule = data.robotsRule
-  if (data.indexable !== undefined) row.indexable = data.indexable
-  return row
 }
 
 export class SEOService {
@@ -137,13 +139,18 @@ export class SEOService {
     const supabase = this.getSupabase()
     if (!supabase) return null
 
-    // Try to update first
-    const { data: existing } = await supabase.from("seo_pages").select("id").eq("page_key", pageKey).maybeSingle()
+    const { data: existing } = await supabase
+      .from("seo_pages")
+      .select("id")
+      .eq("page_key", pageKey)
+      .maybeSingle()
+
+    const dbRow = toPageDbRow(data)
 
     if (existing) {
       const { data: updated, error } = await supabase
         .from("seo_pages")
-        .update({ ...pageDataToRow(data), updated_at: new Date().toISOString() })
+        .update({ ...dbRow, updated_at: new Date().toISOString() })
         .eq("page_key", pageKey)
         .select()
         .single()
@@ -156,7 +163,7 @@ export class SEOService {
     } else {
       const { data: created, error } = await supabase
         .from("seo_pages")
-        .insert({ page_key: pageKey, ...pageDataToRow(data) })
+        .insert({ page_key: pageKey, ...dbRow })
         .select()
         .single()
 
@@ -348,7 +355,11 @@ export class SEOService {
       last_scan_at: new Date().toISOString(),
     }
 
-    const { data: existing } = await supabase.from("seo_health").select("id").eq("page_key", pageKey).maybeSingle()
+    const { data: existing } = await supabase
+      .from("seo_health")
+      .select("id")
+      .eq("page_key", pageKey)
+      .maybeSingle()
 
     let result
     if (existing) {
@@ -404,19 +415,23 @@ export class SEOService {
     const supabase = this.getSupabase()
     if (!supabase) return null
 
-    const { data: existing } = await supabase.from("seo_keywords").select("id").eq("page_key", pageKey).maybeSingle()
+    const { data: existing } = await supabase
+      .from("seo_keywords")
+      .select("id")
+      .eq("page_key", pageKey)
+      .maybeSingle()
 
-    const rowData: Record<string, any> = {}
-    if (data.primaryKeyword !== undefined) rowData.primary_keyword = data.primaryKeyword
-    if (data.secondaryKeywords !== undefined) rowData.secondary_keywords = data.secondaryKeywords
-    if (data.targetDensity !== undefined) rowData.target_density = data.targetDensity
-    if (data.actualDensity !== undefined) rowData.actual_density = data.actualDensity
+    const dbRow: Record<string, any> = {}
+    if (data.primaryKeyword !== undefined) dbRow.primary_keyword = data.primaryKeyword
+    if (data.secondaryKeywords !== undefined) dbRow.secondary_keywords = data.secondaryKeywords
+    if (data.targetDensity !== undefined) dbRow.target_density = data.targetDensity
+    if (data.actualDensity !== undefined) dbRow.actual_density = data.actualDensity
 
     let result
     if (existing) {
       const { data: updated, error } = await supabase
         .from("seo_keywords")
-        .update({ ...rowData, updated_at: new Date().toISOString() })
+        .update({ ...dbRow, updated_at: new Date().toISOString() })
         .eq("page_key", pageKey)
         .select()
         .single()
@@ -429,7 +444,7 @@ export class SEOService {
     } else {
       const { data: created, error } = await supabase
         .from("seo_keywords")
-        .insert({ page_key: pageKey, ...rowData })
+        .insert({ page_key: pageKey, ...dbRow })
         .select()
         .single()
 
