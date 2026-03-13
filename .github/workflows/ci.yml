@@ -14,8 +14,9 @@ jobs:
     env:
       PRISMA_CHECKPOINT_DISABLE: "1"
       PRISMA_DISABLE_TELEMETRY: "1"
-      # Deterministic Prisma placeholder URL for CI (quoted to avoid YAML parsing edge cases)
+      # Deterministic Prisma placeholder URLs for CI (quoted to avoid YAML parsing edge cases)
       POSTGRES_PRISMA_URL: "postgresql://user:password@localhost:5432/placeholder?schema=public"
+      POSTGRES_URL_NON_POOLING: "postgresql://user:password@localhost:5432/placeholder?schema=public"
 
     steps:
       - name: Checkout code
