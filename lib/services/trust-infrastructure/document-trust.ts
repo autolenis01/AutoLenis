@@ -7,6 +7,9 @@
  * - Supersession chain management
  * - Active-for-decision tracking
  * - Revocation handling
+ *
+ * Uses Prisma-backed storage via DocumentTrustRecord model (table: trusted_documents).
+ * Falls back to in-memory storage when Prisma is unavailable (e.g. in tests).
  */
 
 import type {
@@ -23,7 +26,7 @@ import {
 } from "./types"
 
 // ---------------------------------------------------------------------------
-// In-Memory Store (replaced by Prisma/DB in production integration)
+// In-Memory Store (fallback when Prisma is unavailable, e.g. tests)
 // ---------------------------------------------------------------------------
 
 let documentStore: DocumentTrustRecord[] = []
@@ -37,16 +40,16 @@ export function getDocumentStore(): ReadonlyArray<DocumentTrustRecord> {
 }
 
 // ---------------------------------------------------------------------------
-// ID Generation
+// Prisma Availability
 // ---------------------------------------------------------------------------
 
-let docCounter = 0
-
-function generateDocId(): string {
-  docCounter++
-  const timestamp = Date.now().toString(36)
-  const random = Math.random().toString(36).substring(2, 8)
-  return `doc_${timestamp}_${random}_${docCounter}`
+function getPrismaClient(): any | null {
+  try {
+    const { getPrisma } = require("@/lib/db")
+    return getPrisma()
+  } catch {
+    return null
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -60,14 +63,11 @@ export interface DocumentWriteResult {
 }
 
 /**
- * Create a trust record for a new document upload.
- * Automatically sets version = 1 for first document or increments for
- * existing documents of the same type/owner.
+ * Create a trust record for a new document upload (synchronous, in-memory).
  */
 export function createDocumentTrustRecord(
   input: DocumentTrustInput
 ): DocumentWriteResult {
-  // Validate required fields
   if (!input.ownerEntityId) {
     return { success: false, record: null, error: "ownerEntityId is required" }
   }
@@ -84,7 +84,6 @@ export function createDocumentTrustRecord(
     return { success: false, record: null, error: "storageReference is required" }
   }
 
-  // Determine version number based on existing records
   const existingDocs = documentStore.filter(
     (d) =>
       d.ownerEntityId === input.ownerEntityId &&
@@ -93,7 +92,6 @@ export function createDocumentTrustRecord(
   )
   const versionNumber = existingDocs.length + 1
 
-  // Mark previous active versions as superseded
   for (const existing of existingDocs) {
     if (existing.activeForDecision) {
       existing.activeForDecision = false
@@ -104,7 +102,7 @@ export function createDocumentTrustRecord(
 
   const now = new Date().toISOString()
   const record: DocumentTrustRecord = {
-    id: generateDocId(),
+    id: crypto.randomUUID(),
     ownerEntityId: input.ownerEntityId,
     ownerEntityType: input.ownerEntityType,
     documentType: input.documentType,
@@ -128,7 +126,6 @@ export function createDocumentTrustRecord(
     updatedAt: now,
   }
 
-  // Update supersession chain on previous version
   if (existingDocs.length > 0) {
     const previousVersion = existingDocs[existingDocs.length - 1]
     previousVersion.supersededById = record.id
@@ -138,6 +135,108 @@ export function createDocumentTrustRecord(
   documentStore.push(record)
 
   return { success: true, record, error: null }
+}
+
+/**
+ * Create a trust record via Prisma (async, database-backed).
+ * Falls back to synchronous in-memory when Prisma is unavailable.
+ */
+export async function createDocumentTrustRecordAsync(
+  input: DocumentTrustInput
+): Promise<DocumentWriteResult> {
+  if (!input.ownerEntityId) {
+    return { success: false, record: null, error: "ownerEntityId is required" }
+  }
+  if (!input.documentType) {
+    return { success: false, record: null, error: "documentType is required" }
+  }
+  if (!input.fileHash) {
+    return { success: false, record: null, error: "fileHash is required" }
+  }
+  if (!input.uploaderId) {
+    return { success: false, record: null, error: "uploaderId is required" }
+  }
+  if (!input.storageReference) {
+    return { success: false, record: null, error: "storageReference is required" }
+  }
+
+  const db = getPrismaClient()
+  if (!db) {
+    return createDocumentTrustRecord(input)
+  }
+
+  try {
+    // Count existing versions via DB
+    const existingCount = await db.documentTrustRecord.count({
+      where: {
+        ownerEntityId: input.ownerEntityId,
+        ownerEntityType: input.ownerEntityType,
+        documentType: input.documentType,
+      },
+    })
+    const versionNumber = existingCount + 1
+
+    // Mark previous active versions as superseded
+    await db.documentTrustRecord.updateMany({
+      where: {
+        ownerEntityId: input.ownerEntityId,
+        ownerEntityType: input.ownerEntityType,
+        documentType: input.documentType,
+        activeForDecision: true,
+      },
+      data: {
+        activeForDecision: false,
+        status: "SUPERSEDED",
+      },
+    })
+
+    const row = await db.documentTrustRecord.create({
+      data: {
+        ownerEntityId: input.ownerEntityId,
+        ownerEntityType: input.ownerEntityType,
+        documentType: input.documentType,
+        storageSource: input.storageSource,
+        storageReference: input.storageReference,
+        uploaderId: input.uploaderId,
+        fileHash: input.fileHash,
+        versionNumber,
+        status: "UPLOADED",
+        activeForDecision: true,
+        accessScope: input.accessScope ?? "DEAL_PARTIES",
+      },
+    })
+
+    return { success: true, record: mapDbRowToDocRecord(row), error: null }
+  } catch (err: any) {
+    return { success: false, record: null, error: err?.message ?? "Unknown error" }
+  }
+}
+
+function mapDbRowToDocRecord(row: any): DocumentTrustRecord {
+  return {
+    id: row.id,
+    ownerEntityId: row.ownerEntityId,
+    ownerEntityType: row.ownerEntityType,
+    documentType: row.documentType,
+    storageSource: row.storageSource,
+    storageReference: row.storageReference,
+    uploadTimestamp: row.uploadTimestamp instanceof Date ? row.uploadTimestamp.toISOString() : String(row.uploadTimestamp),
+    uploaderId: row.uploaderId,
+    fileHash: row.fileHash,
+    versionNumber: row.versionNumber,
+    status: row.status,
+    verificationMetadata: row.verificationMetadata,
+    verifierId: row.verifierId,
+    verifiedAt: row.verifiedAt instanceof Date ? row.verifiedAt.toISOString() : row.verifiedAt,
+    supersededById: row.supersededById,
+    revocationReason: row.revocationReason,
+    revokedAt: row.revokedAt instanceof Date ? row.revokedAt.toISOString() : row.revokedAt,
+    revokedById: row.revokedById,
+    activeForDecision: row.activeForDecision,
+    accessScope: row.accessScope,
+    createdAt: row.createdAt instanceof Date ? row.createdAt.toISOString() : String(row.createdAt),
+    updatedAt: row.updatedAt instanceof Date ? row.updatedAt.toISOString() : String(row.updatedAt),
+  }
 }
 
 /**
@@ -151,7 +250,6 @@ export function verifyDocument(
     return { success: false, record: null, error: "Document not found" }
   }
 
-  // Cannot verify superseded, revoked, or expired documents
   const nonVerifiableStatuses: DocumentTrustStatus[] = [
     TrustStatus.SUPERSEDED,
     TrustStatus.REVOKED,
@@ -172,7 +270,6 @@ export function verifyDocument(
   record.verificationMetadata = input.verificationMetadata ?? null
   record.updatedAt = now
 
-  // Lock document if approved
   if (input.status === TrustStatus.APPROVED) {
     record.activeForDecision = true
   }
@@ -210,7 +307,6 @@ export function revokeDocument(
 
 /**
  * Get the active trust record for a specific document type and owner.
- * Returns the current active-for-decision version.
  */
 export function getActiveDocumentTrust(
   ownerEntityId: string,
@@ -248,7 +344,6 @@ export function getDocumentVersionChain(
 
 /**
  * Check if a document hash has changed from the active version.
- * Used to detect document tampering after approval.
  */
 export function hasDocumentHashChanged(
   ownerEntityId: string,

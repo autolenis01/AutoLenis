@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/db"
 import type { DealInsuranceReadiness } from "@/lib/types"
 import { DealStatus, VALID_TRANSITIONS, normalizeDealStatus } from "./types"
+import { writeEventAsync } from "@/lib/services/event-ledger"
+import { PlatformEventType, EntityType, ActorType } from "@/lib/services/event-ledger"
 
 export async function advanceDealStatusIfReady(dealId: string, userId?: string) {
   const deal = await prisma.selectedDeal.findUnique({
@@ -75,6 +77,19 @@ export async function advanceDealStatusIfReady(dealId: string, userId?: string) 
         tx,
       )
     })
+
+    // Emit canonical event (non-blocking, outside transaction)
+    writeEventAsync({
+      eventType: PlatformEventType.DEAL_STATUS_CHANGED,
+      entityType: EntityType.DEAL,
+      entityId: dealId,
+      actorId: userId || "SYSTEM",
+      actorType: ActorType.SYSTEM,
+      sourceModule: "deal.status",
+      correlationId: crypto.randomUUID(),
+      idempotencyKey: `deal-status-${dealId}-${newStatus}-${Date.now()}`,
+      payload: { previousStatus: currentStatus, newStatus, trigger: "auto-advance" },
+    }).catch(() => { /* non-critical: do not block deal flow */ })
   }
 
   return newStatus
@@ -135,6 +150,19 @@ export async function cancelDeal(dealId: string, reason: string, actorRole: stri
     await logStatusChange(dealId, currentStatus, "CANCELLED", userId || "SYSTEM", actorRole, reason, tx)
   })
 
+  // Emit canonical event (non-blocking, outside transaction)
+  writeEventAsync({
+    eventType: PlatformEventType.DEAL_CANCELLED,
+    entityType: EntityType.DEAL,
+    entityId: dealId,
+    actorId: userId || deal.user_id || deal.buyerId,
+    actorType: actorRole === "ADMIN" ? ActorType.ADMIN : ActorType.BUYER,
+    sourceModule: "deal.status",
+    correlationId: crypto.randomUUID(),
+    idempotencyKey: `deal-cancel-${dealId}-${Date.now()}`,
+    payload: { reason, actorRole, previousStatus: currentStatus },
+  }).catch(() => { /* non-critical */ })
+
   return { success: true }
 }
 
@@ -178,6 +206,19 @@ export async function adminOverrideStatus(dealId: string, newStatus: DealStatus,
       },
     })
   })
+
+  // Emit canonical event (non-blocking, outside transaction)
+  writeEventAsync({
+    eventType: PlatformEventType.DEAL_STATUS_CHANGED,
+    entityType: EntityType.DEAL,
+    entityId: dealId,
+    actorId: adminUserId,
+    actorType: ActorType.ADMIN,
+    sourceModule: "deal.status",
+    correlationId: crypto.randomUUID(),
+    idempotencyKey: `deal-override-${dealId}-${newStatus}-${Date.now()}`,
+    payload: { previousStatus: currentStatus, newStatus, notes, trigger: "admin-override" },
+  }).catch(() => { /* non-critical */ })
 
   return { success: true, previousStatus: currentStatus, newStatus }
 }

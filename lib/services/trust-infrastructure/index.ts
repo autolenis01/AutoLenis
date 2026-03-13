@@ -7,6 +7,7 @@
 // Document Trust
 export {
   createDocumentTrustRecord,
+  createDocumentTrustRecordAsync,
   verifyDocument,
   revokeDocument,
   getActiveDocumentTrust,
@@ -20,6 +21,7 @@ export {
 // Identity Trust
 export {
   upsertIdentityTrust,
+  upsertIdentityTrustAsync,
   verifyIdentity,
   suspendIdentity,
   flagForManualReview,

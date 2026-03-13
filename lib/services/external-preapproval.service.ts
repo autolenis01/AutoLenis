@@ -2,6 +2,8 @@ import { supabase, prisma } from "@/lib/db"
 import { PREQUAL_EXPIRY_DAYS } from "@/lib/constants"
 import type { ExternalPreApprovalSubmitInput, ExternalPreApprovalReviewInput } from "@/lib/validators/external-preapproval"
 import { emailService } from "@/lib/services/email.service"
+import { writeEventAsync } from "@/lib/services/event-ledger"
+import { PlatformEventType, EntityType, ActorType } from "@/lib/services/event-ledger"
 
 // ---------------------------------------------------------------------------
 // External Pre-Approval Service
@@ -450,6 +452,22 @@ export class ExternalPreApprovalService {
         createdAt: new Date(),
       },
     })
+
+    // Emit canonical event
+    const eventType = input.action === "APPROVED"
+      ? PlatformEventType.EXTERNAL_PREAPPROVAL_APPROVED
+      : PlatformEventType.EXTERNAL_PREAPPROVAL_REJECTED
+    writeEventAsync({
+      eventType,
+      entityType: EntityType.PREAPPROVAL,
+      entityId: submissionId,
+      actorId: adminUserId,
+      actorType: ActorType.ADMIN,
+      sourceModule: "external-preapproval.service",
+      correlationId: crypto.randomUUID(),
+      idempotencyKey: `ext-preapproval-review-${submissionId}-${input.action}`,
+      payload: { action: input.action, buyerId: existing.buyerId, lenderName: existing.lenderName },
+    }).catch(() => { /* non-critical */ })
 
     // Log additional audit event when PreQualification was upserted
     if (preQualification) {

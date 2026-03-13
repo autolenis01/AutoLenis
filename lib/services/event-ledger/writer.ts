@@ -6,6 +6,9 @@
  * - Structured event creation
  * - Event validation
  * - Timeline query utilities
+ *
+ * Uses Prisma-backed storage via the PlatformEvent model (table: platform_events).
+ * Falls back to in-memory storage when Prisma is unavailable (e.g. in tests).
  */
 
 import type {
@@ -16,7 +19,6 @@ import type {
   TimelineResult,
   PlatformEventType,
   EntityType,
-  EventProcessingStatus,
 } from "./types"
 import {
   PlatformEventType as EventTypes,
@@ -26,36 +28,36 @@ import {
 } from "./types"
 
 // ---------------------------------------------------------------------------
-// In-Memory Event Store (replaced by Prisma/DB in production integration)
+// In-Memory Event Store (fallback when Prisma is unavailable, e.g. tests)
 // ---------------------------------------------------------------------------
 
 let eventStore: PlatformEvent[] = []
 
 /**
- * Reset the event store. Only used in tests.
+ * Reset the in-memory event store. Only used in tests.
  */
 export function resetEventStore(): void {
   eventStore = []
 }
 
 /**
- * Get all events in the store. Only used in tests and admin queries.
+ * Get all events from the in-memory store. Only used in tests.
  */
 export function getEventStore(): ReadonlyArray<PlatformEvent> {
   return eventStore
 }
 
 // ---------------------------------------------------------------------------
-// Event ID Generation
+// Prisma Availability
 // ---------------------------------------------------------------------------
 
-let eventCounter = 0
-
-function generateEventId(): string {
-  eventCounter++
-  const timestamp = Date.now().toString(36)
-  const random = Math.random().toString(36).substring(2, 8)
-  return `evt_${timestamp}_${random}_${eventCounter}`
+function getPrismaClient(): any | null {
+  try {
+    const { getPrisma } = require("@/lib/db")
+    return getPrisma()
+  } catch {
+    return null
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -105,18 +107,16 @@ export interface WriteEventResult {
 /**
  * Write a canonical platform event with idempotency protection.
  *
- * If an idempotencyKey is provided and an event with the same key already
- * exists, the write is skipped and the existing event is returned with
- * `duplicate: true`.
+ * Uses the in-memory store (synchronous). Suitable for tests and
+ * contexts where Prisma is unavailable.
  */
 export function writeEvent(input: EventWriteInput): WriteEventResult {
-  // Validate input
   const validationError = validateEventInput(input)
   if (validationError) {
     return { success: false, event: null, duplicate: false, error: validationError }
   }
 
-  // Idempotency check
+  // Idempotency check (in-memory)
   if (input.idempotencyKey) {
     const existing = eventStore.find(
       (e) => e.idempotencyKey === input.idempotencyKey
@@ -126,8 +126,9 @@ export function writeEvent(input: EventWriteInput): WriteEventResult {
     }
   }
 
+  const now = new Date().toISOString()
   const event: PlatformEvent = {
-    id: generateEventId(),
+    id: crypto.randomUUID(),
     eventType: input.eventType,
     eventVersion: 1,
     entityType: input.entityType,
@@ -141,12 +142,103 @@ export function writeEvent(input: EventWriteInput): WriteEventResult {
     idempotencyKey: input.idempotencyKey ?? null,
     payload: input.payload ?? {},
     processingStatus: ProcessingStatuses.RECORDED,
-    createdAt: new Date().toISOString(),
+    createdAt: now,
   }
 
   eventStore.push(event)
-
   return { success: true, event, duplicate: false, error: null }
+}
+
+/**
+ * Write a canonical platform event to the database (async, Prisma-backed).
+ *
+ * This is the production entry point — it persists to platform_events
+ * with real idempotency protection via the unique idempotencyKey constraint.
+ * Falls back to the synchronous in-memory writer when Prisma is unavailable.
+ */
+export async function writeEventAsync(input: EventWriteInput): Promise<WriteEventResult> {
+  const validationError = validateEventInput(input)
+  if (validationError) {
+    return { success: false, event: null, duplicate: false, error: validationError }
+  }
+
+  const db = getPrismaClient()
+  if (!db) {
+    return writeEvent(input)
+  }
+
+  try {
+    // Idempotency check via DB unique constraint
+    if (input.idempotencyKey) {
+      const existing = await db.platformEvent.findUnique({
+        where: { idempotencyKey: input.idempotencyKey },
+      })
+      if (existing) {
+        return {
+          success: true,
+          event: mapDbRowToEvent(existing),
+          duplicate: true,
+          error: null,
+        }
+      }
+    }
+
+    const row = await db.platformEvent.create({
+      data: {
+        eventType: input.eventType,
+        eventVersion: 1,
+        entityType: input.entityType,
+        entityId: input.entityId,
+        parentEntityId: input.parentEntityId ?? null,
+        workspaceId: input.workspaceId ?? null,
+        actorId: input.actorId,
+        actorType: input.actorType,
+        sourceModule: input.sourceModule,
+        correlationId: input.correlationId,
+        idempotencyKey: input.idempotencyKey ?? null,
+        payload: input.payload ?? {},
+        processingStatus: ProcessingStatuses.RECORDED,
+      },
+    })
+
+    return { success: true, event: mapDbRowToEvent(row), duplicate: false, error: null }
+  } catch (err: any) {
+    // Handle unique constraint violation (idempotency key collision)
+    if (err?.code === "P2002" && input.idempotencyKey) {
+      const existing = await db.platformEvent.findUnique({
+        where: { idempotencyKey: input.idempotencyKey },
+      })
+      if (existing) {
+        return {
+          success: true,
+          event: mapDbRowToEvent(existing),
+          duplicate: true,
+          error: null,
+        }
+      }
+    }
+    return { success: false, event: null, duplicate: false, error: err?.message ?? "Unknown error" }
+  }
+}
+
+function mapDbRowToEvent(row: any): PlatformEvent {
+  return {
+    id: row.id,
+    eventType: row.eventType as PlatformEventType,
+    eventVersion: row.eventVersion,
+    entityType: row.entityType as EntityType,
+    entityId: row.entityId,
+    parentEntityId: row.parentEntityId,
+    workspaceId: row.workspaceId,
+    actorId: row.actorId,
+    actorType: row.actorType,
+    sourceModule: row.sourceModule,
+    correlationId: row.correlationId,
+    idempotencyKey: row.idempotencyKey,
+    payload: row.payload as Record<string, unknown>,
+    processingStatus: row.processingStatus,
+    createdAt: row.createdAt instanceof Date ? row.createdAt.toISOString() : String(row.createdAt),
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -205,6 +297,8 @@ function generateEventSummary(event: PlatformEvent): string {
 
 /**
  * Query the event ledger to reconstruct a canonical timeline.
+ *
+ * Uses the in-memory store (synchronous).
  */
 export function queryTimeline(options: TimelineQueryOptions): TimelineResult {
   let filtered = [...eventStore]
@@ -234,7 +328,6 @@ export function queryTimeline(options: TimelineQueryOptions): TimelineResult {
     filtered = filtered.filter((e) => new Date(e.createdAt) <= untilDate)
   }
 
-  // Sort by createdAt ascending
   filtered.sort(
     (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
   )
@@ -265,8 +358,62 @@ export function queryTimeline(options: TimelineQueryOptions): TimelineResult {
   }
 }
 
+/**
+ * Query the event ledger via Prisma (async, database-backed).
+ * Falls back to in-memory query when Prisma is unavailable.
+ */
+export async function queryTimelineAsync(options: TimelineQueryOptions): Promise<TimelineResult> {
+  const db = getPrismaClient()
+  if (!db) return queryTimeline(options)
+
+  const where: Record<string, unknown> = {}
+  if (options.entityType) where.entityType = options.entityType
+  if (options.entityId) where.entityId = options.entityId
+  if (options.eventTypes?.length) where.eventType = { in: options.eventTypes }
+  if (options.actorId) where.actorId = options.actorId
+  if (options.correlationId) where.correlationId = options.correlationId
+  if (options.since || options.until) {
+    const createdAt: Record<string, Date> = {}
+    if (options.since) createdAt.gte = new Date(options.since)
+    if (options.until) createdAt.lte = new Date(options.until)
+    where.createdAt = createdAt
+  }
+
+  const offset = options.offset ?? 0
+  const limit = options.limit ?? 50
+
+  const [rows, total] = await Promise.all([
+    db.platformEvent.findMany({
+      where,
+      orderBy: { createdAt: "asc" },
+      skip: offset,
+      take: limit,
+    }),
+    db.platformEvent.count({ where }),
+  ])
+
+  const entries: TimelineEntry[] = rows.map((row: any) => {
+    const event = mapDbRowToEvent(row)
+    return {
+      id: event.id,
+      eventType: event.eventType,
+      entityType: event.entityType,
+      entityId: event.entityId,
+      actorId: event.actorId,
+      actorType: event.actorType,
+      sourceModule: event.sourceModule,
+      correlationId: event.correlationId,
+      summary: generateEventSummary(event),
+      payload: event.payload,
+      createdAt: event.createdAt,
+    }
+  })
+
+  return { entries, total, hasMore: offset + limit < total }
+}
+
 // ---------------------------------------------------------------------------
-// Entity Timeline Shortcut
+// Entity Timeline Shortcuts
 // ---------------------------------------------------------------------------
 
 /**

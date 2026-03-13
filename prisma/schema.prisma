@@ -3845,6 +3845,7 @@ model DecisionAuditLog {
 
   createdAt       DateTime @default(now())
 
+  @@map("platform_decisions")
   @@index([workspaceId])
   @@index([entityType, entityId])
   @@index([correlationId])
@@ -3877,6 +3878,7 @@ model PlatformEvent {
 
   createdAt        DateTime  @default(now())
 
+  @@map("platform_events")
   @@index([eventType])
   @@index([entityType, entityId])
   @@index([parentEntityId])
@@ -3937,6 +3939,7 @@ model DocumentTrustRecord {
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 
+  @@map("trusted_documents")
   @@index([ownerEntityId, ownerEntityType])
   @@index([documentType])
   @@index([status])
@@ -3965,6 +3968,7 @@ model IdentityTrustRecord {
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
+  @@map("identity_trust_records")
   @@unique([entityId, entityType])
   @@index([status])
   @@index([entityType])

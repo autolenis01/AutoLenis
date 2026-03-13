@@ -6,7 +6,9 @@
 
 export {
   writeEvent,
+  writeEventAsync,
   queryTimeline,
+  queryTimelineAsync,
   getEntityTimeline,
   getCorrelatedEvents,
   validateEventInput,

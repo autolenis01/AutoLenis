@@ -3,12 +3,14 @@
  *
  * Manages canonical identity trust state for platform actors (buyers,
  * dealers, admins) including verification tracking and risk flags.
+ *
+ * Uses Prisma-backed storage via IdentityTrustRecord model (table: identity_trust_records).
+ * Falls back to in-memory storage when Prisma is unavailable (e.g. in tests).
  */
 
 import type {
   IdentityTrustRecord,
   IdentityTrustInput,
-  IdentityTrustStatus,
   OwnerEntityType,
   VerificationSource,
 } from "./types"
@@ -17,7 +19,7 @@ import {
 } from "./types"
 
 // ---------------------------------------------------------------------------
-// In-Memory Store (replaced by Prisma/DB in production integration)
+// In-Memory Store (fallback when Prisma is unavailable, e.g. tests)
 // ---------------------------------------------------------------------------
 
 let identityStore: IdentityTrustRecord[] = []
@@ -31,16 +33,16 @@ export function getIdentityStore(): ReadonlyArray<IdentityTrustRecord> {
 }
 
 // ---------------------------------------------------------------------------
-// ID Generation
+// Prisma Availability
 // ---------------------------------------------------------------------------
 
-let idCounter = 0
-
-function generateIdentityId(): string {
-  idCounter++
-  const timestamp = Date.now().toString(36)
-  const random = Math.random().toString(36).substring(2, 8)
-  return `idt_${timestamp}_${random}_${idCounter}`
+function getPrismaClient(): any | null {
+  try {
+    const { getPrisma } = require("@/lib/db")
+    return getPrisma()
+  } catch {
+    return null
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -54,8 +56,7 @@ export interface IdentityWriteResult {
 }
 
 /**
- * Create or update an identity trust record.
- * If a record already exists for the entity, it is updated.
+ * Create or update an identity trust record (synchronous, in-memory).
  */
 export function upsertIdentityTrust(
   input: IdentityTrustInput
@@ -85,7 +86,7 @@ export function upsertIdentityTrust(
   }
 
   const record: IdentityTrustRecord = {
-    id: generateIdentityId(),
+    id: crypto.randomUUID(),
     entityId: input.entityId,
     entityType: input.entityType,
     status: TrustStatus.UNVERIFIED,
@@ -105,6 +106,76 @@ export function upsertIdentityTrust(
   identityStore.push(record)
 
   return { success: true, record, error: null }
+}
+
+/**
+ * Create or update via Prisma (async, database-backed).
+ * Falls back to synchronous in-memory when Prisma is unavailable.
+ */
+export async function upsertIdentityTrustAsync(
+  input: IdentityTrustInput
+): Promise<IdentityWriteResult> {
+  if (!input.entityId) {
+    return { success: false, record: null, error: "entityId is required" }
+  }
+  if (!input.entityType) {
+    return { success: false, record: null, error: "entityType is required" }
+  }
+
+  const db = getPrismaClient()
+  if (!db) {
+    return upsertIdentityTrust(input)
+  }
+
+  try {
+    const row = await db.identityTrustRecord.upsert({
+      where: {
+        entityId_entityType: {
+          entityId: input.entityId,
+          entityType: input.entityType,
+        },
+      },
+      create: {
+        entityId: input.entityId,
+        entityType: input.entityType,
+        status: "UNVERIFIED",
+        verificationSource: input.verificationSource ?? null,
+        trustFlags: input.trustFlags ?? [],
+        riskFlags: input.riskFlags ?? [],
+        lastAssessedAt: new Date(),
+      },
+      update: {
+        trustFlags: input.trustFlags,
+        riskFlags: input.riskFlags,
+        verificationSource: input.verificationSource,
+        lastAssessedAt: new Date(),
+      },
+    })
+
+    return { success: true, record: mapDbRowToIdentityRecord(row), error: null }
+  } catch (err: any) {
+    return { success: false, record: null, error: err?.message ?? "Unknown error" }
+  }
+}
+
+function mapDbRowToIdentityRecord(row: any): IdentityTrustRecord {
+  return {
+    id: row.id,
+    entityId: row.entityId,
+    entityType: row.entityType,
+    status: row.status,
+    verificationSource: row.verificationSource,
+    verifiedAt: row.verifiedAt instanceof Date ? row.verifiedAt.toISOString() : row.verifiedAt,
+    verifierId: row.verifierId,
+    trustFlags: row.trustFlags ?? [],
+    riskFlags: row.riskFlags ?? [],
+    manualReviewRequired: row.manualReviewRequired,
+    kycStatus: row.kycStatus,
+    kybStatus: row.kybStatus,
+    lastAssessedAt: row.lastAssessedAt instanceof Date ? row.lastAssessedAt.toISOString() : row.lastAssessedAt,
+    createdAt: row.createdAt instanceof Date ? row.createdAt.toISOString() : String(row.createdAt),
+    updatedAt: row.updatedAt instanceof Date ? row.updatedAt.toISOString() : String(row.updatedAt),
+  }
 }
 
 /**
