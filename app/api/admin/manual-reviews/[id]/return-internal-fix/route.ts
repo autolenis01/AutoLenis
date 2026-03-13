@@ -35,7 +35,7 @@ export async function POST(
     const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown"
     const userAgent = request.headers.get("user-agent") || undefined
 
-    const result = await returnToInternalFix(id, parsed.data.assignedQueue, parsed.data.notes, {
+    const result = await returnToInternalFix(id, parsed.data.assignedQueue as any, parsed.data.notes, {
       adminId: session.userId,
       adminRole: session.role,
       ipAddress: ip,

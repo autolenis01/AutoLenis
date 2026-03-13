@@ -135,7 +135,7 @@ describe("Deal status canonicalization", () => {
     }
   })
 
-  it("should have all 15 DealStatus values in the canonical enum", () => {
+  it("should have all 18 DealStatus values in the canonical enum", () => {
     const expected = [
       "SELECTED",
       "FINANCING_PENDING",
@@ -146,6 +146,9 @@ describe("Deal status canonicalization", () => {
       "INSURANCE_COMPLETE",
       "CONTRACT_PENDING",
       "CONTRACT_REVIEW",
+      "CONTRACT_MANUAL_REVIEW_REQUIRED",
+      "CONTRACT_INTERNAL_FIX_IN_PROGRESS",
+      "CONTRACT_ADMIN_OVERRIDE_APPROVED",
       "CONTRACT_APPROVED",
       "SIGNING_PENDING",
       "SIGNED",

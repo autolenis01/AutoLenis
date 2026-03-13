@@ -1,22 +1,48 @@
 # Controlled Manual Approval (CMA) — Code Trace Map
 
 > **Generated:** 2026-03-12
+> **Updated:** 2026-03-13 — CMA fully implemented
 > **Scope:** AutoLenis monorepo — Contract Shield override/approval workflow
-> **Status:** Implementation-accurate code trace; gaps documented explicitly
+> **Status:** CMA system implemented with dedicated model, state machine, RBAC, dual approval, and auto-revocation
+
+---
+
+## CMA Implementation Summary (2026-03-13 Update)
+
+The CMA system has been upgraded from the legacy admin override workflow to a true Controlled Manual Approval system. Key additions:
+
+| Component | Files Added/Modified |
+|---|---|
+| **Data model** | `prisma/schema.prisma` — `ContractManualReview` model with 5 enums |
+| **DealStatus** | Added: `CONTRACT_MANUAL_REVIEW_REQUIRED`, `CONTRACT_INTERNAL_FIX_IN_PROGRESS`, `CONTRACT_ADMIN_OVERRIDE_APPROVED` |
+| **Roles** | Added: `COMPLIANCE_ADMIN` role, `CMA_APPROVER_ROLES`, `isCmaApprover()` |
+| **Service** | `lib/services/contract-shield/manual-review.ts` — 12 functions for full CMA lifecycle |
+| **API routes** | 9 routes under `/api/admin/manual-reviews/` and `/api/admin/deals/` |
+| **Admin UI** | `app/admin/manual-reviews/page.tsx`, `app/admin/manual-reviews/[id]/page.tsx` |
+| **Buyer messaging** | Updated `components/buyer/contract-shield-status.tsx` for CMA states |
+| **Notifications** | Added `sendCmaStatusNotification()` with CMA-specific buyer/dealer messaging |
+| **AI resolvers** | Updated `next-step-resolver.ts` and `cta-resolver.ts` for CMA statuses |
+| **Audit** | Fixed `logEvent()` to write `action` field; added `logCmaEvent()` with full context |
+| **Rate limiting** | Added `cmaApproval` rate limit preset (20/day per admin) |
+| **Tests** | `__tests__/cma-manual-review.test.ts` — 48 unit tests |
+| **Migration** | `scripts/101-cma-manual-review.sql` |
+| **Documentation** | `docs/CMA_ENGINEERING_GUIDE.md` |
 
 ---
 
 ## Terminology
 
-In the AutoLenis codebase, **Controlled Manual Approval (CMA)** is implemented as the **Contract Shield Admin Override** workflow. There is no literal `CMA` identifier in code. The CMA concept maps to:
+In the AutoLenis codebase, **Controlled Manual Approval (CMA)** is now explicitly modeled via the `ContractManualReview` table with dedicated enums (`ManualReviewStatus`, `ManualApprovalMode`, `CmaRootCauseCategory`, `CmaInternalFixQueue`). The legacy override workflow (`ContractShieldOverride` with `FORCE_PASS`/`FORCE_FAIL`) is preserved for backward compatibility.
 
 | CMA Concept | Code Equivalent |
 |---|---|
-| Manual approval | Admin Override (`FORCE_PASS` / `FORCE_FAIL`) |
-| Manual review state | `ScanStatus = "REVIEW_READY"` / Deal status `CONTRACT_REVIEW` |
-| Approval with consent | `adminOverrideWithConsent()` + buyer acknowledgment |
-| Audit trail | `ComplianceEvent` + `ContractShieldOverride` records |
-| Override ledger | `getOverridesLedger()` / admin `/contract-shield/overrides` page |
+| Manual approval | `ContractManualReview` with `approvalMode` = `MANUAL_VALIDATED` or `EXCEPTION_OVERRIDE` |
+| Manual review state | DealStatus `CONTRACT_MANUAL_REVIEW_REQUIRED` |
+| Dual approval | `ManualReviewStatus.PENDING_SECOND_APPROVAL` with `secondApproverAdminId` |
+| Internal fix routing | DealStatus `CONTRACT_INTERNAL_FIX_IN_PROGRESS` with `assignedQueue` |
+| Document integrity | `documentHashAtApproval` + `revokeIfDocsChanged()` auto-revocation |
+| Audit trail | `ComplianceEvent` via `logCmaEvent()` with full actor context |
+| Legacy override | `ContractShieldOverride` (preserved for backward compatibility) |
 
 ---
 

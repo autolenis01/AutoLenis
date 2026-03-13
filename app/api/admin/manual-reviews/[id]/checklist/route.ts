@@ -44,7 +44,7 @@ export async function POST(
     const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown"
     const userAgent = request.headers.get("user-agent") || undefined
 
-    const result = await submitChecklist(id, parsed.data, {
+    const result = await submitChecklist(id, parsed.data as any, {
       adminId: session.userId,
       adminRole: session.role,
       ipAddress: ip,
