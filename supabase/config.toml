@@ -1,0 +1,6 @@
+# supabase/config.toml
+# Supabase CLI configuration for the AutoLenis project.
+# See: https://supabase.com/docs/guides/cli/config
+
+[project]
+id = "vpwnjibcrqujclqalkgy"
