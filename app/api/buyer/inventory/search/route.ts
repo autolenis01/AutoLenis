@@ -57,7 +57,7 @@ export async function GET(req: NextRequest) {
         .select("maxOtdAmountCents, maxOtd")
         .eq("buyerId", user.userId)
         .gt("expiresAt", new Date().toISOString())
-        .eq("prequalStatus", "APPROVED")
+        .eq("status", "APPROVED")
         .order("createdAt", { ascending: false })
         .limit(1)
         .maybeSingle()
@@ -89,19 +89,10 @@ export async function GET(req: NextRequest) {
         }
       }
 
-      // 3. Try cash buyer budget from buyer preferences
-      if (!buyerMaxOtdCents) {
-        const { data: prefs } = await supabase
-          .from("BuyerPreferences")
-          .select("maxBudgetCents")
-          .eq("buyerId", user.userId)
-          .maybeSingle()
-
-        if (prefs?.maxBudgetCents) {
-          buyerMaxOtdCents = prefs.maxBudgetCents
-          approvalType = "cash"
-        }
-      }
+      // 3. Cash buyer budget from buyer preferences
+      // NOTE: maxBudgetCents does not exist in BuyerPreferences schema.
+      // This code path is non-functional until a product decision adds the field.
+      // Disabled to eliminate invalid PostgREST queries against non-existent column.
 
       // If budgetOnly requested but no budget found from any source
       if (!buyerMaxOtdCents) {
