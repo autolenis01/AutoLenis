@@ -539,62 +539,74 @@ export class PaymentService {
 
       if (!payment) throw new Error("Deposit payment not found")
 
-      const providerPaymentId = payment.providerPaymentId || payment.provider_payment_id
-
-      if (providerPaymentId) {
-        const refund = await stripe.refunds.create({
-          payment_intent: providerPaymentId,
-          reason: "requested_by_customer",
-        })
-
-        await supabase
-          .from("DepositPayment")
-          .update({
-            status: PaymentStatus.REFUNDED,
-            refundId: refund.id,
-            refundedAt: now,
-            refunded_timestamp: now,
-            reason,
-            updatedAt: now,
-          })
-          .eq("id", paymentId)
-
-        const { error: auditError } = await supabase.from("ComplianceEvent").insert({
-          eventType: "DEPOSIT_REFUND",
-          action: "DEPOSIT_REFUNDED",
-          userId: adminId,
-          details: {
-            paymentId,
-            amountCents: (payment as any).amountCents || (payment as any).amount_cents || payment.amount,
-            reason,
-            refundId: refund.id,
-          },
-        })
-        if (auditError) {
-          logger.error("[Payment] ComplianceEvent write failed for DEPOSIT_REFUNDED", { error: auditError, paymentId })
-          throw new Error(`Audit log write failed: ${auditError.message}`)
-        }
-
-        // Emit canonical platform event (non-blocking)
-        writeEventAsync({
-          eventType: PlatformEventType.REFUND_APPROVED,
-          entityType: EntityType.REFUND,
-          entityId: refund.id,
-          parentEntityId: paymentId,
-          actorId: adminId,
-          actorType: ActorType.ADMIN,
-          sourceModule: "payment.service",
-          correlationId: crypto.randomUUID(),
-          idempotencyKey: `refund-deposit-${paymentId}`,
-          payload: { type: "deposit", reason, amountCents: (payment as any).amountCents || (payment as any).amount_cents || payment.amount },
-        }).catch(() => { /* non-critical */ })
+      // Idempotency: reject if already refunded
+      if (payment.status === PaymentStatus.REFUNDED) {
+        return { success: true, refundId: payment.refundId, alreadyRefunded: true }
       }
 
-      return { success: true, refundId: payment.refundId }
+      const providerPaymentId = payment.providerPaymentId || payment.provider_payment_id
+
+      if (!providerPaymentId) {
+        throw new Error("No payment provider ID found — cannot process refund")
+      }
+
+      const refund = await stripe.refunds.create({
+        payment_intent: providerPaymentId,
+        reason: "requested_by_customer",
+      })
+
+      await supabase
+        .from("DepositPayment")
+        .update({
+          status: PaymentStatus.REFUNDED,
+          refundId: refund.id,
+          refundedAt: now,
+          refunded_timestamp: now,
+          reason,
+          updatedAt: now,
+        })
+        .eq("id", paymentId)
+
+      const { error: auditError } = await supabase.from("ComplianceEvent").insert({
+        eventType: "DEPOSIT_REFUND",
+        action: "DEPOSIT_REFUNDED",
+        userId: adminId,
+        details: {
+          paymentId,
+          amountCents: (payment as any).amountCents || (payment as any).amount_cents || payment.amount,
+          reason,
+          refundId: refund.id,
+        },
+      })
+      if (auditError) {
+        logger.error("[Payment] ComplianceEvent write failed for DEPOSIT_REFUNDED", { error: auditError, paymentId })
+        throw new Error(`Audit log write failed: ${auditError.message}`)
+      }
+
+      // Emit canonical platform event (non-blocking)
+      writeEventAsync({
+        eventType: PlatformEventType.REFUND_APPROVED,
+        entityType: EntityType.REFUND,
+        entityId: refund.id,
+        parentEntityId: paymentId,
+        actorId: adminId,
+        actorType: ActorType.ADMIN,
+        sourceModule: "payment.service",
+        correlationId: crypto.randomUUID(),
+        idempotencyKey: `refund-deposit-${paymentId}`,
+        payload: { type: "deposit", reason, amountCents: (payment as any).amountCents || (payment as any).amount_cents || payment.amount },
+      }).catch(() => { /* non-critical */ })
+
+      return { success: true, refundId: refund.id }
     } else {
       const { data: payment } = await supabase.from("ServiceFeePayment").select("*").eq("id", paymentId).single()
 
       if (!payment) throw new Error("Service fee payment not found")
+
+      // Idempotency: reject if already refunded
+      if (payment.status === PaymentStatus.REFUNDED) {
+        return { success: true, refundId: payment.refundId, alreadyRefunded: true }
+      }
 
       const providerPaymentId = payment.providerPaymentId || payment.provider_payment_id
 
@@ -649,9 +661,11 @@ export class PaymentService {
           idempotencyKey: `refund-fee-${paymentId}`,
           payload: { type: "service_fee", reason, amountCents: (payment as any).remainingCents || (payment as any).remaining_cents },
         }).catch(() => { /* non-critical */ })
+
+        return { success: true, refundId: refund.id }
       }
 
-      return { success: true }
+      throw new Error("Payment method does not support refund or no provider payment ID")
     }
   }
 

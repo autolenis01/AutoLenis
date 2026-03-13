@@ -189,7 +189,25 @@ export interface AuctionOffer {
 }
 
 // Deal Types
-export type DealStatus = "SELECTED" | "FINANCING" | "INSURED" | "CONTRACTED" | "SIGNED" | "COMPLETED" | "CANCELLED"
+export type DealStatus =
+  | "SELECTED"
+  | "FINANCING_PENDING"
+  | "FINANCING_APPROVED"
+  | "FEE_PENDING"
+  | "FEE_PAID"
+  | "INSURANCE_PENDING"
+  | "INSURANCE_COMPLETE"
+  | "CONTRACT_PENDING"
+  | "CONTRACT_REVIEW"
+  | "CONTRACT_MANUAL_REVIEW_REQUIRED"
+  | "CONTRACT_INTERNAL_FIX_IN_PROGRESS"
+  | "CONTRACT_ADMIN_OVERRIDE_APPROVED"
+  | "CONTRACT_APPROVED"
+  | "SIGNING_PENDING"
+  | "SIGNED"
+  | "PICKUP_SCHEDULED"
+  | "COMPLETED"
+  | "CANCELLED"
 
 export interface SelectedDeal {
   id: string
@@ -203,7 +221,7 @@ export interface SelectedDeal {
 
 // Payment Types
 export type FeePaymentMethod = "CARD" | "LOAN_INCLUSION"
-export type PaymentStatus = "PENDING" | "PAID" | "REFUNDED" | "FAILED"
+export type PaymentStatus = "PENDING" | "PROCESSING" | "SUCCEEDED" | "FAILED" | "REFUNDED"
 
 export interface ServiceFeePayment {
   id: string

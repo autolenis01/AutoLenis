@@ -318,6 +318,8 @@ export class AffiliateService {
       where: { id: serviceFeePaymentId },
     })
 
+    // Accept both canonical SUCCEEDED and legacy "PAID" status for backward compatibility
+    // with records created before the PaymentStatus enum was standardized.
     if (!payment || !([PaymentStatus.SUCCEEDED, "PAID"] as string[]).includes(payment.status)) {
       return { created: false, reason: "Payment not found or not paid" }
     }
@@ -658,7 +660,7 @@ export class AffiliateService {
       discrepancies: [] as any[],
     }
 
-    // Get all PAID service fee payments (PAID = legacy alias for SUCCEEDED)
+    // Get all SUCCEEDED service fee payments (include legacy "PAID" for backward compatibility)
     const paidPayments = await prisma.serviceFeePayment.findMany({
       where: { status: { in: [PaymentStatus.SUCCEEDED, "PAID"] } },
     })

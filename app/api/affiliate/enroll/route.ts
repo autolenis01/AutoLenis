@@ -1,8 +1,16 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { getCurrentUser } from "@/lib/auth-server"
 import { affiliateService } from "@/lib/services/affiliate.service"
+import { rateLimit } from "@/lib/middleware/rate-limit"
 
-export async function POST(_req: NextRequest) {
+export async function POST(req: NextRequest) {
+  // Rate limit: 5 enrollment attempts per 15 minutes per IP
+  const rateLimitResponse = await rateLimit(req, {
+    maxRequests: 5,
+    windowMs: 15 * 60 * 1000,
+  })
+  if (rateLimitResponse) return rateLimitResponse
+
   try {
     const user = await getCurrentUser()
     if (!user) {

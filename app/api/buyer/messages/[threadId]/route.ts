@@ -55,7 +55,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ threadId: 
   } catch (error) {
     const statusCode = (error as { statusCode?: number }).statusCode
     if (statusCode === 401 || statusCode === 403) {
-      return NextResponse.json({ error: (error as Error).message }, { status: statusCode })
+      return NextResponse.json({ error: statusCode === 403 ? "Forbidden" : "Unauthorized" }, { status: statusCode })
     }
     return jsonError("Failed to load thread", 500)
   }
