@@ -697,8 +697,8 @@ export class InsuranceService {
       throw new Error("External policy not found for this deal")
     }
 
-    // Update verification status
-    await prisma.insurancePolicy.update({
+    // Update verification status and read back persisted state
+    const updatedPolicy = await prisma.insurancePolicy.update({
       where: { id: policyId },
       data: { isVerified: verified },
     })
@@ -706,7 +706,7 @@ export class InsuranceService {
     // Log event
     await this.logEvent("POLICY_VERIFIED", dealId, adminUserId, null, {
       policyId,
-      verified,
+      verified: updatedPolicy.isVerified,
       adminUserId,
     })
 
@@ -720,16 +720,16 @@ export class InsuranceService {
       actorType: ActorType.ADMIN,
       sourceModule: "insurance.service",
       correlationId: crypto.randomUUID(),
-      idempotencyKey: `insurance-verify-${policyId}-${verified}`,
-      payload: { verified, carrier: policy.carrier, policyNumber: policy.policyNumber },
+      idempotencyKey: `insurance-verify-${policyId}-${updatedPolicy.isVerified}`,
+      payload: { verified: updatedPolicy.isVerified, carrier: policy.carrier, policyNumber: policy.policyNumber },
     }).catch(() => { /* non-critical: do not block insurance flow */ })
 
-    // If verified, update trust record for the insurance document (non-blocking)
-    if (verified && policy.documentUrl) {
+    // If verified (per persisted state), update trust record for the insurance document
+    if (updatedPolicy.isVerified && policy.documentUrl) {
       const trustRecord = await prisma.documentTrustRecord.findFirst({
         where: {
           ownerEntityId: dealId,
-          documentType: "INSURANCE_PROOF",
+          documentType: TrustDocumentType.INSURANCE_PROOF,
           activeForDecision: true,
         },
         orderBy: { createdAt: "desc" },
@@ -747,7 +747,7 @@ export class InsuranceService {
 
     return {
       policyId,
-      isVerified: verified,
+      isVerified: updatedPolicy.isVerified,
       carrier: policy.carrier,
       policyNumber: policy.policyNumber,
     }
