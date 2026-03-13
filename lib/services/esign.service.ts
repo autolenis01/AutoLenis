@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/db"
 import crypto from "node:crypto"
+import { writeEventAsync } from "@/lib/services/event-ledger"
+import { PlatformEventType, EntityType, ActorType } from "@/lib/services/event-ledger"
 
 function sanitizeForLog(value: string): string {
   return value.replace(/[\r\n]/g, "")
@@ -539,6 +541,19 @@ export class ESignService {
         ${JSON.stringify({ reason, adminUserId, previousStatus })}::jsonb
       )
     `
+
+    // Emit canonical event
+    writeEventAsync({
+      eventType: PlatformEventType.ESIGN_COMPLETED,
+      entityType: EntityType.DEAL,
+      entityId: selectedDealId,
+      actorId: adminUserId,
+      actorType: ActorType.ADMIN,
+      sourceModule: "esign.service",
+      correlationId: crypto.randomUUID(),
+      idempotencyKey: `esign-mark-signed-${selectedDealId}`,
+      payload: { reason, previousStatus, trigger: "admin-mark-signed" },
+    }).catch(() => { /* non-critical */ })
 
     return { success: true, previousStatus, newStatus: "SIGNED" }
   }

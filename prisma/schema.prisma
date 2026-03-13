@@ -3823,3 +3823,156 @@ model InventoryIntelligenceJob {
   @@index([scheduledAt])
   @@index([createdAt])
 }
+
+// ---------------------------------------------------------------------------
+// SYSTEM 1 — Decision Engine Audit Log
+// ---------------------------------------------------------------------------
+
+model DecisionAuditLog {
+  id              String  @id @default(cuid())
+  workspaceId     String?
+
+  entityType      String  // BUYER, DEALER, DEAL
+  entityId        String
+  correlationId   String
+  actorId         String?
+  actorType       String? // BUYER, DEALER, ADMIN, SYSTEM
+
+  inputBasis      Json    // Snapshot of decision inputs
+  outputResult    Json    // Canonical decision output
+  reasonCodes     String[]
+  resolvedAt      DateTime
+
+  createdAt       DateTime @default(now())
+
+  @@map("platform_decisions")
+  @@index([workspaceId])
+  @@index([entityType, entityId])
+  @@index([correlationId])
+  @@index([actorId])
+  @@index([resolvedAt])
+  @@index([createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// SYSTEM 2 — Platform Event Ledger
+// ---------------------------------------------------------------------------
+
+model PlatformEvent {
+  id               String  @id @default(cuid())
+
+  eventType        String
+  eventVersion     Int     @default(1)
+  entityType       String
+  entityId         String
+  parentEntityId   String?
+  workspaceId      String?
+
+  actorId          String
+  actorType        String
+  sourceModule     String
+  correlationId    String
+  idempotencyKey   String?   @unique
+  payload          Json      @default("{}")
+  processingStatus String    @default("RECORDED")
+
+  createdAt        DateTime  @default(now())
+
+  @@map("platform_events")
+  @@index([eventType])
+  @@index([entityType, entityId])
+  @@index([parentEntityId])
+  @@index([workspaceId])
+  @@index([actorId])
+  @@index([correlationId])
+  @@index([processingStatus])
+  @@index([createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// SYSTEM 3 — Document Trust Infrastructure
+// ---------------------------------------------------------------------------
+
+enum DocumentTrustStatusEnum {
+  UPLOADED
+  SCANNED
+  VERIFIED
+  APPROVED
+  LOCKED
+  SUPERSEDED
+  REVOKED
+  EXPIRED
+}
+
+enum IdentityTrustStatusEnum {
+  UNVERIFIED
+  PENDING_VERIFICATION
+  VERIFIED
+  FAILED
+  SUSPENDED
+  REVOKED
+}
+
+model DocumentTrustRecord {
+  id                    String  @id @default(cuid())
+
+  ownerEntityId         String
+  ownerEntityType       String  // BUYER, DEALER, ADMIN, AFFILIATE, DEAL
+  documentType          String  // CONTRACT, EXTERNAL_PREAPPROVAL, CMA_EVIDENCE, etc.
+  storageSource         String
+  storageReference      String
+  uploadTimestamp        DateTime @default(now())
+  uploaderId            String
+  fileHash              String
+  versionNumber         Int     @default(1)
+  status                DocumentTrustStatusEnum @default(UPLOADED)
+  verificationMetadata  Json?
+  verifierId            String?
+  verifiedAt            DateTime?
+  supersededById        String?
+  revocationReason      String?
+  revokedAt             DateTime?
+  revokedById           String?
+  activeForDecision     Boolean @default(true)
+  accessScope           String  @default("DEAL_PARTIES")
+
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@map("trusted_documents")
+  @@index([ownerEntityId, ownerEntityType])
+  @@index([documentType])
+  @@index([status])
+  @@index([activeForDecision])
+  @@index([fileHash])
+  @@index([uploaderId])
+  @@index([createdAt])
+}
+
+model IdentityTrustRecord {
+  id                  String  @id @default(cuid())
+
+  entityId            String
+  entityType          String  // BUYER, DEALER, ADMIN, AFFILIATE
+  status              IdentityTrustStatusEnum @default(UNVERIFIED)
+  verificationSource  String? // MANUAL_ADMIN, KYC_PROVIDER, KYB_PROVIDER, etc.
+  verifiedAt          DateTime?
+  verifierId          String?
+  trustFlags          String[]
+  riskFlags           String[]
+  manualReviewRequired Boolean @default(false)
+  kycStatus           String?
+  kybStatus           String?
+  lastAssessedAt      DateTime?
+
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@map("identity_trust_records")
+  @@unique([entityId, entityType])
+  @@index([status])
+  @@index([entityType])
+  @@index([manualReviewRequired])
+  @@index([lastAssessedAt])
+  @@index([createdAt])
+}

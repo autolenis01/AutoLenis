@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/db"
 import crypto from "crypto"
+import { writeEventAsync } from "@/lib/services/event-ledger"
+import { PlatformEventType, EntityType, ActorType } from "@/lib/services/event-ledger"
 
 export class PickupService {
   // Generate unique QR code value
@@ -117,6 +119,20 @@ export class PickupService {
 
     // Log event
     await this.logPickupEvent(appointment.id, selectedDealId, "SCHEDULED", buyerId, "BUYER", { notes })
+
+    // Emit canonical platform event (non-blocking)
+    writeEventAsync({
+      eventType: PlatformEventType.PICKUP_SCHEDULED,
+      entityType: EntityType.PICKUP,
+      entityId: appointment.id,
+      parentEntityId: selectedDealId,
+      actorId: buyerId,
+      actorType: ActorType.BUYER,
+      sourceModule: "pickup.service",
+      correlationId: crypto.randomUUID(),
+      idempotencyKey: `pickup-scheduled-${appointment.id}`,
+      payload: { scheduledAt: scheduledAt.toISOString(), notes },
+    }).catch(() => { /* non-critical */ })
 
     return {
       id: appointment.id,
@@ -382,6 +398,19 @@ export class PickupService {
     // Log pickup event
     await this.logPickupEvent(appointmentId, selectedDealId || "", "COMPLETED", dealerUserId, "DEALER_USER")
 
+    // Emit canonical platform events (non-blocking)
+    writeEventAsync({
+      eventType: PlatformEventType.DEAL_COMPLETED,
+      entityType: EntityType.DEAL,
+      entityId: selectedDealId || "",
+      actorId: dealerUserId,
+      actorType: ActorType.DEALER,
+      sourceModule: "pickup.service",
+      correlationId: crypto.randomUUID(),
+      idempotencyKey: `deal-completed-${selectedDealId}`,
+      payload: { trigger: "pickup-completed", appointmentId },
+    }).catch(() => { /* non-critical */ })
+
     return {
       appointment: {
         id: updated.id,
@@ -426,6 +455,19 @@ export class PickupService {
     // Log event
     const selectedDealId = appointment.selected_deal_id || appointment.dealId
     await this.logPickupEvent(appointmentId, selectedDealId || "", "CANCELLED", dealerUserId, "DEALER_USER", { reason })
+
+    // Emit canonical platform event (non-blocking)
+    writeEventAsync({
+      eventType: PlatformEventType.DEAL_STATUS_CHANGED,
+      entityType: EntityType.DEAL,
+      entityId: selectedDealId || appointmentId,
+      actorId: dealerUserId,
+      actorType: ActorType.DEALER,
+      sourceModule: "pickup.service",
+      correlationId: crypto.randomUUID(),
+      idempotencyKey: `pickup-cancelled-${appointmentId}`,
+      payload: { status: "CANCELLED", reason, appointmentId },
+    }).catch(() => { /* non-critical */ })
 
     return {
       appointment: {

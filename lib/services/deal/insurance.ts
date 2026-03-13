@@ -1,6 +1,10 @@
 import { prisma } from "@/lib/db"
 import { getSelectedDealForBuyer } from "./retrieval"
 import { advanceDealStatusIfReady } from "./status"
+import { writeEventAsync } from "@/lib/services/event-ledger"
+import { PlatformEventType, EntityType, ActorType } from "@/lib/services/event-ledger"
+import { createDocumentTrustRecordAsync } from "@/lib/services/trust-infrastructure"
+import { TrustDocumentType, OwnerEntityType, AccessScope } from "@/lib/services/trust-infrastructure"
 
 export async function selectInsuranceQuote(userId: string, dealId: string, quoteId: string) {
   const dealData = await getSelectedDealForBuyer(userId, dealId)
@@ -62,6 +66,20 @@ export async function selectInsuranceQuote(userId: string, dealId: string, quote
       },
     },
   })
+
+  // Emit canonical platform event (non-blocking)
+  writeEventAsync({
+    eventType: PlatformEventType.INSURANCE_COMPLETED,
+    entityType: EntityType.INSURANCE,
+    entityId: policy.id,
+    parentEntityId: dealId,
+    actorId: userId,
+    actorType: ActorType.BUYER,
+    sourceModule: "deal.insurance",
+    correlationId: crypto.randomUUID(),
+    idempotencyKey: `insurance-selected-${dealId}-${quoteId}`,
+    payload: { source: "AUTOLENIS", carrier: policy.carrier, policyNumber: policy.policyNumber },
+  }).catch(() => { /* non-critical */ })
 
   // Try to advance status
   await advanceDealStatusIfReady(dealId, userId)
@@ -127,6 +145,32 @@ export async function uploadExternalInsuranceProof(
       },
     },
   })
+
+  // Create trust record for the external insurance document (non-blocking)
+  createDocumentTrustRecordAsync({
+    ownerEntityId: dealId,
+    ownerEntityType: OwnerEntityType.DEAL,
+    documentType: TrustDocumentType.INSURANCE_PROOF,
+    storageSource: "SUPABASE_STORAGE",
+    storageReference: documentUrl,
+    uploaderId: userId,
+    fileHash: `ext-ins-${dealId}-${Date.now()}`,
+    accessScope: AccessScope.DEAL_PARTIES,
+  }).catch(() => { /* non-critical */ })
+
+  // Emit canonical platform event (non-blocking)
+  writeEventAsync({
+    eventType: PlatformEventType.INSURANCE_COMPLETED,
+    entityType: EntityType.INSURANCE,
+    entityId: policy.id,
+    parentEntityId: dealId,
+    actorId: userId,
+    actorType: ActorType.BUYER,
+    sourceModule: "deal.insurance",
+    correlationId: crypto.randomUUID(),
+    idempotencyKey: `insurance-external-${dealId}`,
+    payload: { source: "EXTERNAL", carrierName, policyNumber, documentUrl },
+  }).catch(() => { /* non-critical */ })
 
   // Try to advance status
   await advanceDealStatusIfReady(dealId, userId)

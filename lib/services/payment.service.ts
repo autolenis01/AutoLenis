@@ -7,6 +7,8 @@ import {
   LenderDisbursementStatus,
 } from "@/lib/constants/statuses"
 import { logger } from "@/lib/logger"
+import { writeEventAsync } from "@/lib/services/event-ledger"
+import { PlatformEventType, EntityType, ActorType } from "@/lib/services/event-ledger"
 
 export class PaymentService {
   /**
@@ -572,6 +574,20 @@ export class PaymentService {
           logger.error("[Payment] ComplianceEvent write failed for DEPOSIT_REFUNDED", { error: auditError, paymentId })
           throw new Error(`Audit log write failed: ${auditError.message}`)
         }
+
+        // Emit canonical platform event (non-blocking)
+        writeEventAsync({
+          eventType: PlatformEventType.REFUND_APPROVED,
+          entityType: EntityType.REFUND,
+          entityId: refund.id,
+          parentEntityId: paymentId,
+          actorId: adminId,
+          actorType: ActorType.ADMIN,
+          sourceModule: "payment.service",
+          correlationId: crypto.randomUUID(),
+          idempotencyKey: `refund-deposit-${paymentId}`,
+          payload: { type: "deposit", reason, amountCents: (payment as any).amountCents || (payment as any).amount_cents || payment.amount },
+        }).catch(() => { /* non-critical */ })
       }
 
       return { success: true, refundId: payment.refundId }
@@ -619,6 +635,20 @@ export class PaymentService {
           logger.error("[Payment] ComplianceEvent write failed for FEE_REFUNDED", { error: auditError, paymentId })
           throw new Error(`Audit log write failed: ${auditError.message}`)
         }
+
+        // Emit canonical platform event (non-blocking)
+        writeEventAsync({
+          eventType: PlatformEventType.REFUND_APPROVED,
+          entityType: EntityType.REFUND,
+          entityId: refund.id,
+          parentEntityId: paymentId,
+          actorId: adminId,
+          actorType: ActorType.ADMIN,
+          sourceModule: "payment.service",
+          correlationId: crypto.randomUUID(),
+          idempotencyKey: `refund-fee-${paymentId}`,
+          payload: { type: "service_fee", reason, amountCents: (payment as any).remainingCents || (payment as any).remaining_cents },
+        }).catch(() => { /* non-critical */ })
       }
 
       return { success: true }

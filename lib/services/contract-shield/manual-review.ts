@@ -11,6 +11,8 @@ import { prisma } from "@/lib/db"
 import { logger } from "@/lib/logger"
 import { logCmaEvent } from "./helpers"
 import { createHash } from "crypto"
+import { writeEventAsync } from "@/lib/services/event-ledger"
+import { PlatformEventType, EntityType, ActorType } from "@/lib/services/event-ledger"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -200,6 +202,20 @@ export async function openManualReview(
     previousDealStatus: deal.status,
   }, ctx)
 
+  // Emit canonical event
+  writeEventAsync({
+    eventType: PlatformEventType.CMA_OPENED,
+    entityType: EntityType.MANUAL_REVIEW,
+    entityId: review.id,
+    parentEntityId: dealId,
+    actorId: ctx.adminId,
+    actorType: ctx.adminRole === "SUPER_ADMIN" || ctx.adminRole === "COMPLIANCE_ADMIN" ? ActorType.ADMIN : ActorType.SYSTEM,
+    sourceModule: "contract-shield.manual-review",
+    correlationId: crypto.randomUUID(),
+    idempotencyKey: `cma-open-${review.id}`,
+    payload: { scanId, previousDealStatus: deal.status },
+  }).catch(() => { /* non-critical */ })
+
   logger.info("CMA manual review opened", {
     manualReviewId: review.id,
     dealId,
@@ -342,6 +358,20 @@ export async function approveManualValidated(
     manualReviewId,
     dealId: review.dealId,
   })
+
+  // Emit canonical event
+  writeEventAsync({
+    eventType: PlatformEventType.CMA_APPROVED,
+    entityType: EntityType.MANUAL_REVIEW,
+    entityId: manualReviewId,
+    parentEntityId: review.dealId,
+    actorId: ctx.adminId,
+    actorType: ActorType.ADMIN,
+    sourceModule: "contract-shield.manual-review",
+    correlationId: crypto.randomUUID(),
+    idempotencyKey: `cma-approve-${manualReviewId}`,
+    payload: { approvalMode: "MANUAL_VALIDATED", rootCause: review.rootCauseCategory },
+  }).catch(() => { /* non-critical */ })
 
   return result
 }
@@ -671,6 +701,20 @@ export async function revokeManualReview(
     dealId: review.dealId,
     reason,
   })
+
+  // Emit canonical event
+  writeEventAsync({
+    eventType: PlatformEventType.CMA_REVOKED,
+    entityType: EntityType.MANUAL_REVIEW,
+    entityId: manualReviewId,
+    parentEntityId: review.dealId,
+    actorId: ctx.adminId,
+    actorType: ActorType.ADMIN,
+    sourceModule: "contract-shield.manual-review",
+    correlationId: crypto.randomUUID(),
+    idempotencyKey: `cma-revoke-${manualReviewId}`,
+    payload: { reason, previousApprovalMode: review.approvalMode },
+  }).catch(() => { /* non-critical */ })
 
   return result
 }

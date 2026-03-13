@@ -9,6 +9,7 @@
 import { prisma, supabase } from "@/lib/db"
 import { identityFirewallService } from "./identity-firewall.service"
 import { circumventionMonitorService } from "./circumvention-monitor.service"
+import { resolveDecision } from "@/lib/services/decision-engine"
 
 // ── Types ──────────────────────────────────────────────────────────────────
 

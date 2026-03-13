@@ -3,6 +3,8 @@ import { logEvent } from "./helpers"
 import { getScanWithDetails } from "./queries"
 import type { IssueSeverity, ScanIssueItem, ScanStatus } from "./types"
 import { FLAGGED_ADD_ONS, STATE_DOC_FEE_REFERENCE } from "./types"
+import { writeEventAsync } from "@/lib/services/event-ledger"
+import { PlatformEventType, EntityType, ActorType } from "@/lib/services/event-ledger"
 
 export async function scanContract(selectedDealId: string) {
   const deal = await prisma.selectedDeal.findUnique({
@@ -139,6 +141,25 @@ export async function scanContract(selectedDealId: string) {
     criticalCount,
     importantCount,
   })
+
+  // Emit canonical event for contract scan completion
+  const scanEventType = status === "PASS"
+    ? PlatformEventType.CONTRACT_PASSED
+    : status === "FAIL"
+      ? PlatformEventType.CONTRACT_FAILED
+      : PlatformEventType.CONTRACT_SCAN_COMPLETED
+  writeEventAsync({
+    eventType: scanEventType,
+    entityType: EntityType.SCAN,
+    entityId: scan.id,
+    parentEntityId: selectedDealId,
+    actorId: "SYSTEM",
+    actorType: ActorType.SYSTEM,
+    sourceModule: "contract-shield.scanner",
+    correlationId: crypto.randomUUID(),
+    idempotencyKey: `scan-${scan.id}-${status}`,
+    payload: { status, criticalCount, importantCount, itemsCount: items.length },
+  }).catch(() => { /* non-critical */ })
 
   return getScanWithDetails(scan.id)
 }
