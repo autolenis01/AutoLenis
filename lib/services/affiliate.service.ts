@@ -8,6 +8,13 @@ import { CommissionStatus, PayoutStatus, PaymentStatus } from "@/lib/constants/s
 import { writeEventAsync } from "@/lib/services/event-ledger"
 import { PlatformEventType, EntityType, ActorType } from "@/lib/services/event-ledger"
 
+/**
+ * Payment statuses that represent a successful/completed payment.
+ * Includes canonical SUCCEEDED and legacy "PAID" for backward compatibility
+ * with records created before the PaymentStatus enum was standardized.
+ */
+const SUCCEEDED_PAYMENT_STATUSES: readonly string[] = [PaymentStatus.SUCCEEDED, "PAID"]
+
 export class AffiliateService {
   // Updated commission rates per specification (% of concierge fee)
   private readonly COMMISSION_RATES = {
@@ -320,7 +327,7 @@ export class AffiliateService {
 
     // Accept both canonical SUCCEEDED and legacy "PAID" status for backward compatibility
     // with records created before the PaymentStatus enum was standardized.
-    if (!payment || !([PaymentStatus.SUCCEEDED, "PAID"] as string[]).includes(payment.status)) {
+    if (!payment || !SUCCEEDED_PAYMENT_STATUSES.includes(payment.status)) {
       return { created: false, reason: "Payment not found or not paid" }
     }
 
@@ -662,7 +669,7 @@ export class AffiliateService {
 
     // Get all SUCCEEDED service fee payments (include legacy "PAID" for backward compatibility)
     const paidPayments = await prisma.serviceFeePayment.findMany({
-      where: { status: { in: [PaymentStatus.SUCCEEDED, "PAID"] } },
+      where: { status: { in: [...SUCCEEDED_PAYMENT_STATUSES] } },
     })
 
     results.paymentsChecked = paidPayments.length
@@ -996,7 +1003,7 @@ export class AffiliateService {
           { selected_deal_id: dealId },
           { selectedDealId: dealId },
         ],
-        status: { in: [PaymentStatus.SUCCEEDED, "PAID"] },
+        status: { in: [...SUCCEEDED_PAYMENT_STATUSES] },
       },
     })
 
@@ -1024,7 +1031,7 @@ export class AffiliateService {
     const payment = await prisma.serviceFeePayment.findFirst({
       where: {
         user_id: userId,
-        status: { in: [PaymentStatus.SUCCEEDED, "PAID"] },
+        status: { in: [...SUCCEEDED_PAYMENT_STATUSES] },
       },
       orderBy: { createdAt: "desc" },
     })
