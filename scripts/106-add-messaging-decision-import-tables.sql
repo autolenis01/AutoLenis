@@ -3,6 +3,11 @@
 -- ============================================================================
 -- These tables back the messaging service, best-price offer decision tracking,
 -- and dealer CSV inventory import features.
+--
+-- Access: All tables use service-only RLS (USING false WITH CHECK false).
+-- They are accessed exclusively via Prisma with the service-role key from
+-- API route handlers — no direct Supabase client access is needed.
+--
 -- Idempotent: uses IF NOT EXISTS for all objects.
 -- ============================================================================
 

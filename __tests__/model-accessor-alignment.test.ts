@@ -101,6 +101,11 @@ describe("Model Accessor Alignment — Required Models Exist", () => {
 describe("Model Accessor Alignment — RLS Table References", () => {
   const rlsScript = readFile("scripts/02-add-rls-policies.sql")
 
+  // Stale table names that were renamed or never existed:
+  //   "Offer"          — renamed to "AuctionOffer" in schema
+  //   "Contract"       — renamed to "ContractDocument" in schema
+  //   "Deal"           — renamed to "SelectedDeal" in schema
+  //   "AffiliateClick" — renamed to "Click" in schema
   const STALE_TABLES = ['"Offer"', '"Contract"', '"Deal"', '"AffiliateClick"']
 
   for (const table of STALE_TABLES) {
