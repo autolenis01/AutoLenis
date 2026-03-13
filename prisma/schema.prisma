@@ -3977,3 +3977,103 @@ model IdentityTrustRecord {
   @@index([lastAssessedAt])
   @@index([createdAt])
 }
+
+// ---------------------------------------------------------------------------
+// MESSAGING — Threads & Messages
+// ---------------------------------------------------------------------------
+
+model MessageThread {
+  id          String  @id @default(cuid())
+  workspaceId String?
+
+  buyerId  String
+  dealerId String
+
+  requestId String?
+  dealId    String?
+
+  approvalType     String  @default("autolenis")
+  identityReleased Boolean @default(false)
+  status           String  @default("ACTIVE")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  messages Message[]
+
+  @@index([workspaceId])
+  @@index([buyerId])
+  @@index([dealerId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model Message {
+  id       String @id @default(cuid())
+  threadId String
+  thread   MessageThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+
+  senderType String // BUYER, DEALER, SYSTEM
+  senderId   String
+
+  body                 String  @db.Text
+  redactedBody         String? @db.Text
+  containsSensitiveData Boolean @default(false)
+  circumventionScore   Int     @default(0)
+
+  createdAt DateTime @default(now())
+
+  @@index([threadId])
+  @@index([senderId])
+  @@index([createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// AUCTION — Offer Decisions
+// ---------------------------------------------------------------------------
+
+model AuctionOfferDecision {
+  id        String @id @default(cuid())
+  auctionId String
+  offerId   String
+  buyerId   String
+
+  decision   String // ACCEPTED, DECLINED
+  acceptedAt DateTime?
+  declinedAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([auctionId])
+  @@index([offerId])
+  @@index([buyerId])
+  @@index([createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// INVENTORY — Import Jobs
+// ---------------------------------------------------------------------------
+
+model InventoryImportJob {
+  id       String @id @default(cuid())
+  dealerId String
+
+  status    String @default("PENDING")
+  totalRows Int    @default(0)
+
+  createdCount Int @default(0)
+  updatedCount Int @default(0)
+  failedCount  Int @default(0)
+
+  errorsJson Json?
+
+  startedAt   DateTime?
+  completedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([dealerId])
+  @@index([status])
+  @@index([createdAt])
+}

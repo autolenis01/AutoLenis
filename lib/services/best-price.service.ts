@@ -387,11 +387,11 @@ export class BestPriceService {
 
   private static async loadWeights() {
     try {
-      const setting = await prisma.adminSettings.findFirst({
+      const setting = await prisma.adminSetting.findFirst({
         where: { key: "BEST_PRICE_WEIGHTS" },
       })
-      if (setting?.valueJson) {
-        return { ...DEFAULT_WEIGHTS, ...(setting.valueJson as any) }
+      if (setting?.value) {
+        return { ...DEFAULT_WEIGHTS, ...(setting.value as any) }
       }
     } catch {
       // Use defaults
