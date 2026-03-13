@@ -1,5 +1,9 @@
 import { prisma } from "@/lib/db"
 import { dealContextService } from "@/lib/services/deal-context.service"
+import { writeEventAsync } from "@/lib/services/event-ledger"
+import { PlatformEventType, EntityType, ActorType } from "@/lib/services/event-ledger"
+import { createDocumentTrustRecordAsync, verifyDocument } from "@/lib/services/trust-infrastructure"
+import { TrustDocumentType, OwnerEntityType, AccessScope, DocumentTrustStatus } from "@/lib/services/trust-infrastructure"
 
 // Insurance provider interface for abstraction
 interface InsuranceProviderAdapter {
@@ -441,6 +445,20 @@ export class InsuranceService {
         effectiveDate: bindResult.effectiveDate,
       })
 
+      // Emit canonical platform event (non-blocking)
+      writeEventAsync({
+        eventType: PlatformEventType.INSURANCE_COMPLETED,
+        entityType: EntityType.INSURANCE,
+        entityId: policy.id,
+        parentEntityId: dealId,
+        actorId: userId,
+        actorType: ActorType.BUYER,
+        sourceModule: "insurance.service",
+        correlationId: crypto.randomUUID(),
+        idempotencyKey: `insurance-bound-${policy.id}`,
+        payload: { carrier: policy.carrier, policyNumber: policy.policyNumber, type: "AUTOLENIS" },
+      }).catch(() => { /* non-critical: do not block insurance flow */ })
+
       return {
         policyId: policy.id,
         policyNumber: policy.policyNumber,
@@ -528,6 +546,32 @@ export class InsuranceService {
       policyNumber,
       documentUrl,
     })
+
+    // Create document trust record for external insurance proof (non-blocking)
+    createDocumentTrustRecordAsync({
+      ownerEntityId: dealId,
+      ownerEntityType: OwnerEntityType.DEAL,
+      documentType: TrustDocumentType.INSURANCE_PROOF,
+      storageSource: "EXTERNAL_UPLOAD",
+      storageReference: documentUrl,
+      uploaderId: userId,
+      fileHash: `ext-ins-${dealId}-${Date.now()}`,
+      accessScope: AccessScope.DEAL_PARTIES,
+    }).catch(() => { /* non-critical: do not block insurance flow */ })
+
+    // Emit canonical platform event (non-blocking)
+    writeEventAsync({
+      eventType: PlatformEventType.INSURANCE_COMPLETED,
+      entityType: EntityType.INSURANCE,
+      entityId: policy.id,
+      parentEntityId: dealId,
+      actorId: userId,
+      actorType: ActorType.BUYER,
+      sourceModule: "insurance.service",
+      correlationId: crypto.randomUUID(),
+      idempotencyKey: `insurance-external-upload-${policy.id}`,
+      payload: { carrier: carrierName, policyNumber, type: "EXTERNAL", documentUrl },
+    }).catch(() => { /* non-critical: do not block insurance flow */ })
 
     return {
       policyId: policy.id,
@@ -665,6 +709,40 @@ export class InsuranceService {
       verified,
       adminUserId,
     })
+
+    // Emit canonical platform event (non-blocking)
+    writeEventAsync({
+      eventType: PlatformEventType.INSURANCE_COMPLETED,
+      entityType: EntityType.INSURANCE,
+      entityId: policyId,
+      parentEntityId: dealId,
+      actorId: adminUserId,
+      actorType: ActorType.ADMIN,
+      sourceModule: "insurance.service",
+      correlationId: crypto.randomUUID(),
+      idempotencyKey: `insurance-verify-${policyId}-${verified}`,
+      payload: { verified, carrier: policy.carrier, policyNumber: policy.policyNumber },
+    }).catch(() => { /* non-critical: do not block insurance flow */ })
+
+    // If verified, update trust record for the insurance document (non-blocking)
+    if (verified && policy.documentUrl) {
+      const trustRecords = await prisma.$queryRaw<Array<{ id: string }>>`
+        SELECT "id" FROM "trusted_documents"
+        WHERE "ownerEntityId" = ${dealId}
+          AND "documentType" = 'INSURANCE_PROOF'
+          AND "activeForDecision" = true
+        ORDER BY "createdAt" DESC
+        LIMIT 1
+      `
+      if (trustRecords.length > 0) {
+        verifyDocument({
+          documentId: trustRecords[0].id,
+          verifierId: adminUserId,
+          status: DocumentTrustStatus.APPROVED,
+          verificationMetadata: { adminAction: "EXTERNAL_POLICY_VERIFICATION", policyId },
+        })
+      }
+    }
 
     return {
       policyId,
