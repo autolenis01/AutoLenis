@@ -528,7 +528,7 @@ export async function getAllAffiliates(filters?: { search?: string; page?: numbe
 
   const [referralsResult, clicksResult, payoutsResult] = await Promise.all([
     supabase.from("Referral").select("affiliateId, level").in("affiliateId", affiliateIds),
-    supabase.from("AffiliateClick").select("affiliateId").in("affiliateId", affiliateIds),
+    supabase.from("Click").select("affiliateId").in("affiliateId", affiliateIds),
     supabase.from("Payout").select("affiliateId, amount").in("affiliateId", affiliateIds),
   ])
 

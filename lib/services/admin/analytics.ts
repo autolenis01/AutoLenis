@@ -240,7 +240,7 @@ export async function getDealerPerformance(workspaceId?: string) {
   const dealerIds = dealers.map((d) => d.id)
 
   const [offersResult, dealsResult] = await Promise.all([
-    supabase.from("Offer").select("dealerId").in("dealerId", dealerIds),
+    supabase.from("AuctionOffer").select("dealerId").in("dealerId", dealerIds),
     supabase.from("SelectedDeal").select("dealerId").in("dealerId", dealerIds),
   ])
 

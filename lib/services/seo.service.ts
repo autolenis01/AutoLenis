@@ -39,6 +39,65 @@ export interface SEOKeywords {
   actualDensity: number
 }
 
+/* ------------------------------------------------------------------ */
+/*  DB ↔ App mapping helpers                                          */
+/*  The canonical SEO tables use snake_case columns (seo_pages,       */
+/*  seo_schema, seo_health, seo_keywords).  The app interfaces use    */
+/*  camelCase.  These helpers bridge the two.                         */
+/* ------------------------------------------------------------------ */
+
+const SEO_PAGE_SELECT =
+  "id, page_key, title, description, keywords, canonical_url, og_title, og_description, og_image_url, robots_rule, indexable, updated_at"
+
+function mapSeoPageRow(row: any): SEOPageData {
+  return {
+    id: row.id,
+    pageKey: row.page_key,
+    title: row.title,
+    description: row.description,
+    keywords: row.keywords,
+    canonicalUrl: row.canonical_url,
+    ogTitle: row.og_title,
+    ogDescription: row.og_description,
+    ogImageUrl: row.og_image_url,
+    robotsRule: row.robots_rule,
+    indexable: row.indexable,
+    updatedAt: row.updated_at,
+  }
+}
+
+function toSeoPageRow(data: Partial<SEOPageData>): Record<string, unknown> {
+  const row: Record<string, unknown> = {}
+  if (data.title !== undefined) row.title = data.title
+  if (data.description !== undefined) row.description = data.description
+  if (data.keywords !== undefined) row.keywords = data.keywords
+  if (data.canonicalUrl !== undefined) row.canonical_url = data.canonicalUrl
+  if (data.ogTitle !== undefined) row.og_title = data.ogTitle
+  if (data.ogDescription !== undefined) row.og_description = data.ogDescription
+  if (data.ogImageUrl !== undefined) row.og_image_url = data.ogImageUrl
+  if (data.robotsRule !== undefined) row.robots_rule = data.robotsRule
+  if (data.indexable !== undefined) row.indexable = data.indexable
+  return row
+}
+
+function mapSeoSchemaRow(row: any): SEOSchema {
+  return {
+    id: row.id,
+    pageKey: row.page_key,
+    schemaType: row.schema_type,
+    schemaJson: row.schema_json,
+  }
+}
+
+function toSeoKeywordsRow(data: Partial<SEOKeywords>): Record<string, unknown> {
+  const row: Record<string, unknown> = {}
+  if (data.primaryKeyword !== undefined) row.primary_keyword = data.primaryKeyword
+  if (data.secondaryKeywords !== undefined) row.secondary_keywords = data.secondaryKeywords
+  if (data.targetDensity !== undefined) row.target_density = data.targetDensity
+  if (data.actualDensity !== undefined) row.actual_density = data.actualDensity
+  return row
+}
+
 export class SEOService {
   /**
    * Returns a Supabase admin client, or null when env vars are missing
@@ -59,18 +118,16 @@ export class SEOService {
     const supabase = this.getSupabase()
     if (!supabase) return null
     const { data, error } = await supabase
-      .from("SeoPages")
-      .select(
-        "id, pageKey, title, description, keywords, canonicalUrl, ogTitle, ogDescription, ogImageUrl, robotsRule, indexable, updatedAt",
-      )
-      .eq("pageKey", pageKey)
+      .from("seo_pages")
+      .select(SEO_PAGE_SELECT)
+      .eq("page_key", pageKey)
       .maybeSingle()
 
     if (error) {
       console.error("[SEO] Error fetching page SEO:", error)
       return null
     }
-    return data
+    return data ? mapSeoPageRow(data) : null
   }
 
   // Update SEO metadata for a page
@@ -79,33 +136,39 @@ export class SEOService {
     if (!supabase) return null
 
     // Try to update first
-    const { data: existing } = await supabase.from("SeoPages").select("id").eq("pageKey", pageKey).maybeSingle()
+    const { data: existing } = await supabase
+      .from("seo_pages")
+      .select("id")
+      .eq("page_key", pageKey)
+      .maybeSingle()
+
+    const row = toSeoPageRow(data)
 
     if (existing) {
       const { data: updated, error } = await supabase
-        .from("SeoPages")
-        .update({ ...data, updatedAt: new Date().toISOString() })
-        .eq("pageKey", pageKey)
-        .select()
+        .from("seo_pages")
+        .update({ ...row, updated_at: new Date().toISOString() })
+        .eq("page_key", pageKey)
+        .select(SEO_PAGE_SELECT)
         .single()
 
       if (error) {
         console.error("[SEO] Error updating page SEO:", error)
         return null
       }
-      return updated
+      return mapSeoPageRow(updated)
     } else {
       const { data: created, error } = await supabase
-        .from("SeoPages")
-        .insert({ pageKey, ...data })
-        .select()
+        .from("seo_pages")
+        .insert({ page_key: pageKey, ...row })
+        .select(SEO_PAGE_SELECT)
         .single()
 
       if (error) {
         console.error("[SEO] Error creating page SEO:", error)
         return null
       }
-      return created
+      return mapSeoPageRow(created)
     }
   }
 
@@ -114,17 +177,15 @@ export class SEOService {
     const supabase = this.getSupabase()
     if (!supabase) return []
     const { data, error } = await supabase
-      .from("SeoPages")
-      .select(
-        "id, pageKey, title, description, keywords, canonicalUrl, ogTitle, ogDescription, ogImageUrl, robotsRule, indexable, updatedAt",
-      )
-      .order("pageKey", { ascending: true })
+      .from("seo_pages")
+      .select(SEO_PAGE_SELECT)
+      .order("page_key", { ascending: true })
 
     if (error) {
       console.error("[SEO] Error fetching all pages:", error)
       return []
     }
-    return data || []
+    return (data || []).map(mapSeoPageRow)
   }
 
   // Get schema for a page
@@ -132,15 +193,15 @@ export class SEOService {
     const supabase = this.getSupabase()
     if (!supabase) return []
     const { data, error } = await supabase
-      .from("SeoSchema")
-      .select("id, pageKey, schemaType, schemaJson")
-      .eq("pageKey", pageKey)
+      .from("seo_schema")
+      .select("id, page_key, schema_type, schema_json")
+      .eq("page_key", pageKey)
 
     if (error) {
       console.error("[SEO] Error fetching page schema:", error)
       return []
     }
-    return data || []
+    return (data || []).map(mapSeoSchemaRow)
   }
 
   // Update schema for a page
@@ -153,38 +214,38 @@ export class SEOService {
     if (!supabase) return null
 
     const { data: existing } = await supabase
-      .from("SeoSchema")
+      .from("seo_schema")
       .select("id")
-      .eq("pageKey", pageKey)
-      .eq("schemaType", schemaType)
+      .eq("page_key", pageKey)
+      .eq("schema_type", schemaType)
       .maybeSingle()
 
     if (existing) {
       const { data: updated, error } = await supabase
-        .from("SeoSchema")
-        .update({ schemaJson, updatedAt: new Date().toISOString() })
-        .eq("pageKey", pageKey)
-        .eq("schemaType", schemaType)
-        .select()
+        .from("seo_schema")
+        .update({ schema_json: schemaJson, updated_at: new Date().toISOString() })
+        .eq("page_key", pageKey)
+        .eq("schema_type", schemaType)
+        .select("id, page_key, schema_type, schema_json")
         .single()
 
       if (error) {
         console.error("[SEO] Error updating page schema:", error)
         return null
       }
-      return updated
+      return mapSeoSchemaRow(updated)
     } else {
       const { data: created, error } = await supabase
-        .from("SeoSchema")
-        .insert({ pageKey, schemaType, schemaJson })
-        .select()
+        .from("seo_schema")
+        .insert({ page_key: pageKey, schema_type: schemaType, schema_json: schemaJson })
+        .select("id, page_key, schema_type, schema_json")
         .single()
 
       if (error) {
         console.error("[SEO] Error creating page schema:", error)
         return null
       }
-      return created
+      return mapSeoSchemaRow(created)
     }
   }
 
@@ -192,7 +253,7 @@ export class SEOService {
   async deletePageSchema(id: string): Promise<void> {
     const supabase = this.getSupabase()
     if (!supabase) return
-    const { error } = await supabase.from("SeoSchema").delete().eq("id", id)
+    const { error } = await supabase.from("seo_schema").delete().eq("id", id)
 
     if (error) {
       console.error("[SEO] Error deleting page schema:", error)
@@ -204,9 +265,9 @@ export class SEOService {
     const supabase = this.getSupabase()
     if (!supabase) return null
     const { data, error } = await supabase
-      .from("SeoHealth")
-      .select("pageKey, score, issuesJson, lastScanAt")
-      .eq("pageKey", pageKey)
+      .from("seo_health")
+      .select("page_key, score, issues_json, last_scan_at")
+      .eq("page_key", pageKey)
       .maybeSingle()
 
     if (error) {
@@ -216,10 +277,10 @@ export class SEOService {
 
     return data
       ? {
-          pageKey: data.pageKey,
+          pageKey: data.page_key,
           score: data.score,
-          issues: data.issuesJson as any,
-          lastScanAt: new Date(data.lastScanAt),
+          issues: data.issues_json as any,
+          lastScanAt: new Date(data.last_scan_at),
         }
       : null
   }
@@ -292,19 +353,23 @@ export class SEOService {
     }
     const healthData = {
       score: Math.max(0, score),
-      issuesJson: issues,
-      lastScanAt: new Date().toISOString(),
+      issues_json: issues,
+      last_scan_at: new Date().toISOString(),
     }
 
-    const { data: existing } = await supabase.from("SeoHealth").select("id").eq("pageKey", pageKey).maybeSingle()
+    const { data: existing } = await supabase
+      .from("seo_health")
+      .select("id")
+      .eq("page_key", pageKey)
+      .maybeSingle()
 
     let result
     if (existing) {
       const { data, error } = await supabase
-        .from("SeoHealth")
+        .from("seo_health")
         .update(healthData)
-        .eq("pageKey", pageKey)
-        .select()
+        .eq("page_key", pageKey)
+        .select("page_key, score, issues_json, last_scan_at")
         .single()
 
       if (error) {
@@ -314,9 +379,9 @@ export class SEOService {
       result = data
     } else {
       const { data, error } = await supabase
-        .from("SeoHealth")
-        .insert({ pageKey, ...healthData })
-        .select()
+        .from("seo_health")
+        .insert({ page_key: pageKey, ...healthData })
+        .select("page_key, score, issues_json, last_scan_at")
         .single()
 
       if (error) {
@@ -327,10 +392,10 @@ export class SEOService {
     }
 
     return {
-      pageKey: result.pageKey,
+      pageKey: result.page_key,
       score: result.score,
-      issues: result.issuesJson as any,
-      lastScanAt: new Date(result.lastScanAt),
+      issues: result.issues_json as any,
+      lastScanAt: new Date(result.last_scan_at),
     }
   }
 
@@ -339,9 +404,9 @@ export class SEOService {
     const supabase = this.getSupabase()
     if (!supabase) return null
     const { data, error } = await supabase
-      .from("SeoKeywords")
-      .select("pageKey, primaryKeyword, secondaryKeywords, targetDensity, actualDensity")
-      .eq("pageKey", pageKey)
+      .from("seo_keywords")
+      .select("page_key, primary_keyword, secondary_keywords, target_density, actual_density")
+      .eq("page_key", pageKey)
       .maybeSingle()
 
     if (error) {
@@ -351,11 +416,11 @@ export class SEOService {
 
     return data
       ? {
-          pageKey: data.pageKey,
-          primaryKeyword: data.primaryKeyword,
-          secondaryKeywords: (data.secondaryKeywords as string[]) || [],
-          targetDensity: Number(data.targetDensity),
-          actualDensity: Number(data.actualDensity),
+          pageKey: data.page_key,
+          primaryKeyword: data.primary_keyword,
+          secondaryKeywords: (data.secondary_keywords as string[]) || [],
+          targetDensity: Number(data.target_density),
+          actualDensity: Number(data.actual_density),
         }
       : null
   }
@@ -365,15 +430,21 @@ export class SEOService {
     const supabase = this.getSupabase()
     if (!supabase) return null
 
-    const { data: existing } = await supabase.from("SeoKeywords").select("id").eq("pageKey", pageKey).maybeSingle()
+    const { data: existing } = await supabase
+      .from("seo_keywords")
+      .select("id")
+      .eq("page_key", pageKey)
+      .maybeSingle()
+
+    const row = toSeoKeywordsRow(data)
 
     let result
     if (existing) {
       const { data: updated, error } = await supabase
-        .from("SeoKeywords")
-        .update({ ...data, updatedAt: new Date().toISOString() })
-        .eq("pageKey", pageKey)
-        .select()
+        .from("seo_keywords")
+        .update({ ...row, updated_at: new Date().toISOString() })
+        .eq("page_key", pageKey)
+        .select("page_key, primary_keyword, secondary_keywords, target_density, actual_density")
         .single()
 
       if (error) {
@@ -383,9 +454,9 @@ export class SEOService {
       result = updated
     } else {
       const { data: created, error } = await supabase
-        .from("SeoKeywords")
-        .insert({ pageKey, ...data })
-        .select()
+        .from("seo_keywords")
+        .insert({ page_key: pageKey, ...row })
+        .select("page_key, primary_keyword, secondary_keywords, target_density, actual_density")
         .single()
 
       if (error) {
@@ -396,11 +467,11 @@ export class SEOService {
     }
 
     return {
-      pageKey: result.pageKey,
-      primaryKeyword: result.primaryKeyword,
-      secondaryKeywords: (result.secondaryKeywords as string[]) || [],
-      targetDensity: Number(result.targetDensity),
-      actualDensity: Number(result.actualDensity),
+      pageKey: result.page_key,
+      primaryKeyword: result.primary_keyword,
+      secondaryKeywords: (result.secondary_keywords as string[]) || [],
+      targetDensity: Number(result.target_density),
+      actualDensity: Number(result.actual_density),
     }
   }
 
@@ -409,12 +480,12 @@ export class SEOService {
     const pages = await this.getAllPages()
 
     const supabase = this.getSupabase()
-    let records: Array<{ pageKey: string; score: number; issuesJson: any; lastScanAt: string }> = []
+    let records: Array<{ page_key: string; score: number; issues_json: any; last_scan_at: string }> = []
 
     if (supabase) {
       const { data: healthRecords, error } = await supabase
-        .from("SeoHealth")
-        .select("pageKey, score, issuesJson, lastScanAt")
+        .from("seo_health")
+        .select("page_key, score, issues_json, last_scan_at")
 
       if (error) {
         console.error("[SEO] Error fetching health records:", error)
@@ -427,7 +498,7 @@ export class SEOService {
     const avgScore = records.length > 0 ? records.reduce((sum, h) => sum + h.score, 0) / records.length : 0
 
     const criticalIssues = records.reduce((count, h) => {
-      const issues = (h.issuesJson as any[]) || []
+      const issues = (h.issues_json as any[]) || []
       return count + issues.filter((i) => i.severity === "critical").length
     }, 0)
 
@@ -437,9 +508,9 @@ export class SEOService {
       avgScore: Math.round(avgScore),
       criticalIssues,
       pages: records.map((h) => ({
-        pageKey: h.pageKey,
+        pageKey: h.page_key,
         score: h.score,
-        lastScanAt: h.lastScanAt,
+        lastScanAt: h.last_scan_at,
       })),
     }
   }
@@ -469,8 +540,8 @@ export class SEOService {
       }
 
       const { data: pages, error } = await supabase
-        .from("SeoPages")
-        .select("pageKey, canonicalUrl, updatedAt")
+        .from("seo_pages")
+        .select("page_key, canonical_url, updated_at")
         .eq("indexable", true)
 
       if (error) {
@@ -483,10 +554,10 @@ export class SEOService {
       }
 
       return pages.map((page) => ({
-        loc: page.canonicalUrl || `${baseUrl}/${page.pageKey === "home" ? "" : page.pageKey}`,
-        lastmod: new Date(page.updatedAt).toISOString().split("T")[0],
+        loc: page.canonical_url || `${baseUrl}/${page.page_key === "home" ? "" : page.page_key}`,
+        lastmod: new Date(page.updated_at).toISOString().split("T")[0],
         changefreq: "weekly",
-        priority: page.pageKey === "home" ? "1.0" : "0.8",
+        priority: page.page_key === "home" ? "1.0" : "0.8",
       }))
     } catch (err) {
       console.warn("[SEO] Unexpected error generating sitemap — using fallback:", err)
