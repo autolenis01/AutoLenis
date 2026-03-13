@@ -263,6 +263,7 @@ All required environment variables are documented in `.env.example`. Critical va
 
 - [API Documentation](docs/API.md)
 - [RLS Setup Guide](docs/RLS_SETUP.md)
+- [Supabase GitHub Integration](docs/SUPABASE_GITHUB_INTEGRATION.md)
 - [Performance Guide](docs/PERFORMANCE.md)
 - [Naming Conventions](docs/NAMING_CONVENTIONS.md)
 
