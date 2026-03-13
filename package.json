@@ -29,7 +29,12 @@
     "test:unit": "vitest run --reporter=verbose",
     "test:links": "playwright test e2e/link-checker.spec.ts --project=chromium",
     "check:links": "node scripts/crawl-and-report.mjs",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "integration:all": "npm run integration:phase1 && npm run integration:phase2 && npm run integration:phase3 && npm run integration:phase4",
+    "integration:phase1": "echo 'Phase 1: Pre-Integration Verification' && npm run db:push",
+    "integration:phase2": "npx tsx scripts/phase-2-data-validation.ts",
+    "integration:phase3": "npx tsx scripts/phase-3-security-validation.ts",
+    "integration:phase4": "npx tsx scripts/phase-4-performance-testing.ts"
   },
   "overrides": {
     "@prisma/client": "6.16.0"
