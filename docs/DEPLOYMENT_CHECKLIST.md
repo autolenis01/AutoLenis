@@ -22,6 +22,7 @@ Use this checklist before deploying to production to ensure all systems are oper
 - [ ] Database connection pooling is configured
 - [ ] Backup strategy is in place
 - [ ] Database credentials are rotated and secure
+- [ ] Supabase project is linked to GitHub repository (see [Supabase GitHub Integration](SUPABASE_GITHUB_INTEGRATION.md))
 
 ### Security
 - [ ] CORS headers are properly configured

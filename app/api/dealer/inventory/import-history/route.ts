@@ -28,10 +28,10 @@ export async function GET(_req: NextRequest) {
 
     // Get import logs
     const { data: imports, error: importsError } = await supabase
-      .from("InventoryImportLog")
+      .from("inventory_import_log")
       .select("*")
-      .eq("dealerId", dealer.id)
-      .order("createdAt", { ascending: false })
+      .eq("dealer_id", dealer.id)
+      .order("created_at", { ascending: false })
 
     if (importsError) {
       console.error("[Import History] Error:", importsError)
