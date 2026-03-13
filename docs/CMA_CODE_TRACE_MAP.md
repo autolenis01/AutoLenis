@@ -403,9 +403,9 @@ The closest existing data point is `ContractShieldOverride.action = "FORCE_PASS"
 
 **5. `logEvent()` does not populate required `action` field on ComplianceEvent**
 - Where: `helpers.ts:5-10` — creates ComplianceEvent with only `dealId`, `eventType`, `details`
-- Schema: `ComplianceEvent.action String` is a required non-nullable field
-- Impact: Either fails at runtime (if DB enforces NOT NULL) or stores empty/default value
-- Affects: Audit integrity, compliance
+- Schema: `ComplianceEvent.action String` is declared as non-nullable in the Prisma schema (`prisma/schema.prisma:1794`), which generates a `NOT NULL` constraint at the database level
+- Impact: The `prisma.complianceEvent.create()` call will be rejected by Prisma's type system at compile time (if strict types are enforced) or fail at the database level at runtime. The `logEvent()` function wraps the call in a try/catch that logs the error to console (`console.error`) and swallows it — meaning **all CMA audit events may silently fail to persist**
+- Affects: Audit integrity, compliance — this is the most critical gap if audit events are not actually being written
 
 ### Important Gaps
 
