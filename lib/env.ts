@@ -34,8 +34,8 @@ const envSchema = z.object({
   SUPABASE_JWT_SECRET: z.string().min(1, "SUPABASE_JWT_SECRET must not be empty").optional(),
 
   // Database URLs (Optional — used by Prisma directUrl and migration scripts)
-  POSTGRES_URL: z.string().min(1, "POSTGRES_URL must not be empty").optional(),
-  POSTGRES_URL_NON_POOLING: z.string().min(1, "POSTGRES_URL_NON_POOLING must not be empty").optional(),
+  POSTGRES_URL: z.string().url("POSTGRES_URL must be a valid URL").optional(),
+  POSTGRES_URL_NON_POOLING: z.string().url("POSTGRES_URL_NON_POOLING must be a valid URL").optional(),
 
   // E-sign webhooks (Optional)
   ESIGN_WEBHOOK_SECRET: z.string().min(1, "ESIGN_WEBHOOK_SECRET must not be empty").optional(),
