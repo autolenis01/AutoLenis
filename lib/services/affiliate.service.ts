@@ -5,6 +5,8 @@ import { EmailService, emailService } from "./email.service"
 import { getReferralCode, buildReferralLink } from "@/lib/utils/referral-code"
 import { logger } from "@/lib/logger"
 import { CommissionStatus, PayoutStatus, PaymentStatus } from "@/lib/constants/statuses"
+import { writeEventAsync } from "@/lib/services/event-ledger"
+import { PlatformEventType, EntityType, ActorType } from "@/lib/services/event-ledger"
 
 export class AffiliateService {
   // Updated commission rates per specification (% of concierge fee)
@@ -402,6 +404,20 @@ export class AffiliateService {
         amount_cents: commission.amount_cents,
         level: commission.level,
       })
+
+      // Emit canonical platform event (non-blocking)
+      writeEventAsync({
+        eventType: PlatformEventType.AFFILIATE_COMMISSION_CREATED,
+        entityType: EntityType.COMMISSION,
+        entityId: commission.id,
+        parentEntityId: commission.affiliateId,
+        actorId: "SYSTEM",
+        actorType: ActorType.SYSTEM,
+        sourceModule: "affiliate.service",
+        correlationId: crypto.randomUUID(),
+        idempotencyKey: `commission-created-${commission.id}`,
+        payload: { serviceFeePaymentId, amountCents: commission.amount_cents, level: commission.level },
+      }).catch(() => { /* non-critical */ })
     }
 
     // Send notification to Level 1 affiliate
@@ -850,6 +866,20 @@ export class AffiliateService {
       commissionCount: earnedCommissions.length,
     })
 
+    // Emit canonical platform event (non-blocking)
+    writeEventAsync({
+      eventType: PlatformEventType.PAYOUT_HELD,
+      entityType: EntityType.PAYOUT,
+      entityId: payout.id,
+      parentEntityId: affiliateId,
+      actorId: "SYSTEM",
+      actorType: ActorType.SYSTEM,
+      sourceModule: "affiliate.service",
+      correlationId: crypto.randomUUID(),
+      idempotencyKey: `payout-created-${payout.id}`,
+      payload: { amountCents: totalCents, commissionCount: earnedCommissions.length },
+    }).catch(() => { /* non-critical */ })
+
     return payout
   }
 
@@ -898,6 +928,20 @@ export class AffiliateService {
       payoutId,
       providerRef,
     })
+
+    // Emit canonical platform event (non-blocking)
+    writeEventAsync({
+      eventType: PlatformEventType.PAYOUT_RELEASED,
+      entityType: EntityType.PAYOUT,
+      entityId: payoutId,
+      parentEntityId: payout.affiliateId,
+      actorId: "SYSTEM",
+      actorType: ActorType.SYSTEM,
+      sourceModule: "affiliate.service",
+      correlationId: crypto.randomUUID(),
+      idempotencyKey: `payout-released-${payoutId}`,
+      payload: { providerRef, amountCents: payout.total_amount_cents || payout.totalAmountCents },
+    }).catch(() => { /* non-critical */ })
 
     return payout
   }
