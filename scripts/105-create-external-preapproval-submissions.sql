@@ -12,12 +12,12 @@ CREATE TABLE IF NOT EXISTS external_preapproval_submissions (
   lender_name             TEXT NOT NULL,
   approved_amount         NUMERIC NOT NULL,
   max_otd_amount_cents    INTEGER,
-  apr                     NUMERIC,
-  apr_bps                 INTEGER,
+  apr                     NUMERIC,       -- APR as a decimal (e.g., 5.25 for 5.25%)
+  apr_bps                 INTEGER,       -- APR in basis points (e.g., 525 for 5.25%) — normalised for integer comparison
   term_months             INTEGER,
   min_monthly_payment_cents INTEGER,
   max_monthly_payment_cents INTEGER,
-  dti_ratio_bps           INTEGER,
+  dti_ratio_bps           INTEGER,       -- DTI ratio in basis points (e.g., 3600 for 36%)
   expires_at              TIMESTAMPTZ,
   submission_notes        TEXT,
 
@@ -211,10 +211,12 @@ BEGIN
     v_sub.buyer_id,
     v_sub.workspace_id,
     'ACTIVE',
+    -- "CreditTier" and "PreQualSource" are Prisma-managed PostgreSQL enums
+    -- defined in prisma/schema.prisma and created by `prisma db push`.
     v_credit_tier::"CreditTier",
     v_approved_amount,
     COALESCE(v_sub.min_monthly_payment_cents, 0)::numeric / 100,
-    COALESCE(COALESCE(p_max_monthly_override, v_sub.max_monthly_payment_cents), 0)::numeric / 100,
+    COALESCE(p_max_monthly_override, v_sub.max_monthly_payment_cents, 0)::numeric / 100,
     ROUND(v_approved_amount * 100)::integer,
     v_sub.min_monthly_payment_cents,
     COALESCE(p_max_monthly_override, v_sub.max_monthly_payment_cents),
