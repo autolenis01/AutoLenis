@@ -29,6 +29,20 @@ const envSchema = z.object({
   FROM_EMAIL: z.string().email("FROM_EMAIL must be a valid email address (verified Resend sender)").optional(),
   RESEND_FROM_EMAIL: z.string().email("RESEND_FROM_EMAIL must be a valid email address").optional(),
 
+  // Supabase (Optional)
+  SUPABASE_URL: z.string().url("SUPABASE_URL must be a valid URL").optional(),
+  SUPABASE_JWT_SECRET: z.string().min(1, "SUPABASE_JWT_SECRET must not be empty").optional(),
+
+  // Database URLs (Optional — used by Prisma directUrl and migration scripts)
+  POSTGRES_URL: z.string().min(1, "POSTGRES_URL must not be empty").optional(),
+  POSTGRES_URL_NON_POOLING: z.string().min(1, "POSTGRES_URL_NON_POOLING must not be empty").optional(),
+
+  // E-sign webhooks (Optional)
+  ESIGN_WEBHOOK_SECRET: z.string().min(1, "ESIGN_WEBHOOK_SECRET must not be empty").optional(),
+
+  // AI / Gemini (Optional)
+  GEMINI_API_KEY: z.string().min(1, "GEMINI_API_KEY must not be empty").optional(),
+
   // Optional but recommended
   NEXT_PUBLIC_APP_URL: z.string().url().optional(),
   ADMIN_NOTIFICATION_EMAIL: z.string().email().optional(),
