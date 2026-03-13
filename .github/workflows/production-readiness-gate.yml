@@ -16,6 +16,7 @@ jobs:
     timeout-minutes: 25
     env:
       POSTGRES_PRISMA_URL: postgresql://user:password@localhost:5432/placeholder?schema=public
+      POSTGRES_URL_NON_POOLING: postgresql://user:password@localhost:5432/placeholder?schema=public
 
     steps:
       - name: Checkout
