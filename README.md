@@ -60,9 +60,12 @@ AutoLenis is a comprehensive automotive marketplace connecting buyers, dealers, 
    \`\`\`bash
    # Generate Prisma client
    pnpm run postinstall
-   
-   # Run database migrations
-   pnpm run db:migrate
+
+   # Link your Supabase project
+   pnpm run db:link
+
+   # Push all migrations to the database
+   pnpm run db:push
    \`\`\`
 
 5. **Run the development server**
@@ -74,23 +77,30 @@ AutoLenis is a comprehensive automotive marketplace connecting buyers, dealers, 
 
 ### Database Setup
 
-The project uses PostgreSQL with Supabase. Follow these steps:
+The project uses PostgreSQL with Supabase. Migrations are managed via the
+[Supabase CLI](https://supabase.com/docs/guides/cli) under `supabase/migrations/`.
 
 1. **Create Supabase Project**
    - Go to [supabase.com](https://supabase.com)
    - Create a new project
    - Copy connection strings to `.env`
 
-2. **Run Migrations**
+2. **Link your project**
    \`\`\`bash
-   # Initialize database schema
-   bun run scripts/01-initialize-database.sql
-   
-   # Apply RLS policies (see docs/RLS_SETUP.md)
-   bun run db:migrate
+   supabase link --project-ref dmtxwrzjmobxcfmveybl
    \`\`\`
 
-3. **Verify Setup**
+3. **Run Migrations**
+   \`\`\`bash
+   supabase db push
+   \`\`\`
+
+4. **Create a new migration** (when making schema changes)
+   \`\`\`bash
+   supabase migration new <migration-name>
+   \`\`\`
+
+5. **Verify Setup**
    - Check tables in Supabase Dashboard > Database
    - Verify RLS policies are enabled
 
@@ -112,7 +122,10 @@ The project uses PostgreSQL with Supabase. Follow these steps:
 │   ├── validators/       # Zod schemas
 │   └── utils/            # Helper functions
 ├── scripts/              # Database scripts
-│   └── migrations/       # Migration scripts
+│   └── migrations/       # Legacy migration runner
+├── supabase/             # Supabase CLI project
+│   ├── config.toml       # Supabase configuration
+│   └── migrations/       # SQL migrations (managed by Supabase CLI)
 ├── docs/                 # Documentation
 └── prisma/               # Prisma schema
 \`\`\`
@@ -127,10 +140,11 @@ The project uses PostgreSQL with Supabase. Follow these steps:
 - `pnpm run test:unit` - Run unit tests (Vitest)
 - `pnpm run test:e2e` - Run E2E tests (Playwright)
 - `pnpm run analyze` - Analyze bundle size
-- `pnpm run db:setup` - Initialize database
-- `pnpm run db:push` - Push Prisma schema to database
+- `pnpm run db:link` - Link Supabase project
+- `pnpm run db:push` - Push Supabase migrations to database
+- `pnpm run db:push:prisma` - Push Prisma schema to database
 - `pnpm run db:studio` - Open Prisma Studio
-- `pnpm run db:migrate` - Run database migrations
+- `pnpm run db:migrate` - Run legacy database migrations
 
 ## Authentication
 

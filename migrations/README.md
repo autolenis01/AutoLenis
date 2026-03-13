@@ -1,20 +1,27 @@
-# Database Migrations
+# Database Migrations (Legacy)
 
-These SQL scripts should be run in the **Supabase Dashboard SQL Editor** in sequential order.
+These SQL scripts have been consolidated into the Supabase CLI baseline
+migration at `supabase/migrations/00000000000000_initial_schema.sql`.
 
-## How to Run
+## Current Workflow
 
-1. Go to your Supabase Dashboard → SQL Editor
-2. Run each script in order:
+All new migrations are managed with the Supabase CLI:
 
-### Schema Migrations
-- `02-add-dealer-users-table.sql` - Creates DealerUser table
-- `03-add-missing-buyer-fields.sql` - Adds missing columns to BuyerProfile
-- `04-add-missing-dealer-fields.sql` - Adds missing columns to Dealer
-- `05-add-vehicle-fields.sql` - Adds missing columns to Vehicle
-- `94-add-admin-mfa-fields.sql` - Adds MFA fields to User table and creates admin audit tables
-- `95-add-connection-canary-table.sql` - Creates _connection_canary table for health checks
+```bash
+# Link your project (one-time setup)
+supabase link --project-ref dmtxwrzjmobxcfmveybl
 
-## Note
+# Create a new migration
+supabase migration new <migration-name>
 
-These scripts require SSL connections and cannot be run directly in the v0 runtime. Always run them in the Supabase SQL Editor.
+# Push all migrations to the database
+supabase db push
+```
+
+Migration files live in `supabase/migrations/` and are applied in
+lexicographic order.
+
+## Legacy Scripts
+
+The numbered SQL files in this directory were applied before the baseline
+and are kept for historical reference only. Do **not** run them manually.
