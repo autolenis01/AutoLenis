@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { getSession, isCmaApprover } from "@/lib/auth-server"
-import { approveExceptionOverride } from "@/lib/services/contract-shield"
+import { approveExceptionOverride, getManualReviewById } from "@/lib/services/contract-shield"
 import { rateLimit, rateLimits } from "@/lib/middleware/rate-limit"
 import { logCmaEvent } from "@/lib/services/contract-shield/helpers"
 import { z } from "zod"
@@ -30,7 +30,8 @@ export async function POST(
       keyGenerator: () => `cma-approval:${session.userId}`,
     })
     if (rateLimitResult) {
-      await logCmaEvent("", "MANUAL_APPROVAL_RATE_LIMIT_EXCEEDED", {
+      const review = await getManualReviewById(id)
+      await logCmaEvent(review?.dealId || "", "MANUAL_APPROVAL_RATE_LIMIT_EXCEEDED", {
         adminId: session.userId,
         adminRole: session.role,
         manualReviewId: id,
