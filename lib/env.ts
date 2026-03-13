@@ -22,6 +22,8 @@ const envSchema = z.object({
   // Database URLs (Optional — Prisma is optional, Supabase is primary)
   DATABASE_URL: z.string().url("DATABASE_URL must be a valid URL").optional(),
   POSTGRES_PRISMA_URL: z.string().url("POSTGRES_PRISMA_URL must be a valid URL").optional(),
+  POSTGRES_URL: z.string().url("POSTGRES_URL must be a valid URL").optional(),
+  POSTGRES_URL_NON_POOLING: z.string().url("POSTGRES_URL_NON_POOLING must be a valid URL").optional(),
 
   // Email (Required — all emails are sent LIVE via Resend)
   RESEND_API_KEY: z.string().min(1, "RESEND_API_KEY is required — all emails must send LIVE via Resend"),
