@@ -142,16 +142,29 @@ The platform supports multiple user roles:
 - **ADMIN**: Platform administrators
 - **SUPER_ADMIN**: Full system access
 
-### Creating Admin Account
+### Creating the First Admin Account
 
-1. Set environment variables:
-   \`\`\`bash
-   SUPER_ADMIN_EMAIL=admin@autolenis.com
-   SUPER_ADMIN_TEMP_PASSWORD=your-secure-password
+1. Set the registration code in your environment (`.env.local` or Vercel):
+   ```bash
    ADMIN_REGISTRATION_CODE=your-secret-code
-   \`\`\`
+   ```
 
-2. Use the admin signup endpoint with the registration code
+2. Call the admin signup endpoint with the registration code:
+   ```bash
+   curl -X POST https://your-domain/api/admin/auth/signup \
+     -H "Content-Type: application/json" \
+     -d '{
+       "email": "admin@autolenis.com",
+       "password": "YourSecureP4ss!",
+       "firstName": "Admin",
+       "lastName": "User",
+       "bootstrapSecret": "your-secret-code"
+     }'
+   ```
+
+3. After the first admin is created, **remove** `ADMIN_REGISTRATION_CODE` from your
+   environment to prevent further unauthenticated signups. Subsequent admin accounts
+   can be created by an existing admin.
 
 ## Security
 

@@ -41,6 +41,9 @@ const envSchema = z.object({
   // AI / Gemini (Optional — needed for AI assistant features)
   GEMINI_API_KEY: z.string().min(1).optional(),
 
+  // Admin bootstrap (Optional — set temporarily to create the first admin account)
+  ADMIN_REGISTRATION_CODE: z.string().min(1).optional(),
+
   // Optional but recommended
   NEXT_PUBLIC_APP_URL: z.string().url().optional(),
   ADMIN_NOTIFICATION_EMAIL: z.string().email().optional(),

@@ -29,13 +29,14 @@ export async function POST(request: Request) {
     const { email, password, firstName, lastName, bootstrapSecret } = body
 
     // SECURITY: Only existing admins can create new admin accounts.
-    // Exception: when ADMIN_BOOTSTRAP_SECRET is set, the very first admin
-    // can be created by including the matching `bootstrapSecret` in the body.
+    // Exception: when ADMIN_REGISTRATION_CODE (or legacy ADMIN_BOOTSTRAP_SECRET)
+    // is set, the very first admin can be created by including the matching
+    // `bootstrapSecret` in the request body.
     const session = await getAdminSession()
     const isAdmin = session && (session.role === "ADMIN" || session.role === "SUPER_ADMIN")
 
     if (!isAdmin) {
-      const envSecret = process.env["ADMIN_BOOTSTRAP_SECRET"]
+      const envSecret = process.env["ADMIN_REGISTRATION_CODE"] || process.env["ADMIN_BOOTSTRAP_SECRET"]
       const isBootstrap = envSecret && bootstrapSecret === envSecret
 
       if (!isBootstrap) {
