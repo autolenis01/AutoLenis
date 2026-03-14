@@ -90,14 +90,14 @@ async function testSimpleQueries(): Promise<void> {
     );
 
     // Dealer find operation
-    const dealers = await measureQuery<Awaited<ReturnType<typeof prisma.dealer.findMany>>>(
+    const dealers = await measureQuery(
       "Dealer find all",
       () => prisma.dealer.findMany({ take: 100 }),
       THRESHOLDS.SINGLE_QUERY_MS
     );
 
     // Vehicle query with relations
-    const vehicles = await measureQuery<Awaited<ReturnType<typeof prisma.vehicle.findMany>>>(
+    const vehicles = await measureQuery(
       "Vehicle query",
       () => prisma.vehicle.findMany({ take: 50 }),
       THRESHOLDS.SINGLE_QUERY_MS
@@ -119,7 +119,7 @@ async function testComplexQueries(): Promise<void> {
 
   try {
     // JOIN query: Dealers with their users
-    const dealersWithUsers = await measureQuery<Awaited<ReturnType<typeof prisma.dealer.findMany<{ include: { DealerUser: true } }>>>>(
+    const dealersWithUsers = await measureQuery(
       "Dealer with users (JOIN)",
       () =>
         prisma.dealer.findMany({
@@ -132,7 +132,7 @@ async function testComplexQueries(): Promise<void> {
     );
 
     // Multi-level join: User -> Workspace -> Dealers
-    const workspaceData = await measureQuery<Awaited<ReturnType<typeof prisma.workspace.findMany>>>(
+    const workspaceData = await measureQuery(
       "Workspace with users and dealers (multi-JOIN)",
       () =>
         prisma.workspace.findMany({
@@ -149,7 +149,7 @@ async function testComplexQueries(): Promise<void> {
     );
 
     // Aggregation query: Payment statistics
-    const paymentStats = await measureQuery<Awaited<ReturnType<typeof prisma.depositPayment.groupBy>>>(
+    const paymentStats = await measureQuery(
       "Payment aggregation",
       () =>
         prisma.depositPayment.groupBy({
@@ -178,24 +178,23 @@ async function testBulkOperations(): Promise<void> {
 
   try {
     // Bulk read: Large result set
-    const largeQuery = await measureQuery<Awaited<ReturnType<typeof prisma.user.findMany>>>(
+    const largeQuery = await measureQuery(
       "Bulk read (1000+ records)",
       () => prisma.user.findMany({ take: 1000 }),
       THRESHOLDS.BULK_QUERY_MS
     );
 
     // Batch query: Multiple independent queries
-    const batchQueries = await measureQuery<[number, number, number, number, number]>(
+    const batchQueries = await measureQuery(
       "Batch queries (5 parallel)",
-      async () => {
-        return Promise.all([
+      () =>
+        Promise.all([
           prisma.user.count(),
           prisma.dealer.count(),
           prisma.vehicle.count(),
           prisma.workspace.count(),
           prisma.adminUser.count(),
-        ]) as Promise<[number, number, number, number, number]>;
-      },
+        ]),
       THRESHOLDS.BULK_QUERY_MS
     );
 
