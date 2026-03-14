@@ -259,7 +259,7 @@ async function validateTransactionHandling(): Promise<void> {
 
   try {
     // Test nested transactions
-    await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async (tx: typeof prisma) => {
       // Simulate a multi-step operation
       const workspace = await tx.workspace.findFirst();
       if (workspace) {
