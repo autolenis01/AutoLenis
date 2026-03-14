@@ -246,7 +246,6 @@ const migrations = [
         ('13-ai-conversations.sql',             'AI conversations'),
         ('14-referral-payouts.sql',             'Referral payouts'),
         ('93-create-email-log-table.sql',       'Email log (v1)'),
-        ('create-email-log-table.sql',          'Email log (v2)'),
         ('99-admin-rls-audit-fixes.sql',        'RLS audit fixes'),
         ('99-ai-gemini-max-v2.sql',             'AI Gemini max v2'),
         ('100-sync-schema-all-pending.sql',     'Full schema sync')

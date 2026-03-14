@@ -32,12 +32,12 @@ POSTGRES_URL_NON_POOLING="postgresql://user:pass@host:5432/db"
 ### 2. Supabase Configuration
 
 \`\`\`bash
-SUPABASE_URL="https://xxxxx.supabase.co"
-NEXT_PUBLIC_SUPABASE_URL="https://xxxxx.supabase.co"
-SUPABASE_ANON_KEY="your-anon-key"
+NEXT_PUBLIC_SUPABASE_URL="https://your-project.supabase.co"
+SUPABASE_URL="https://your-project.supabase.co"
 NEXT_PUBLIC_SUPABASE_ANON_KEY="your-anon-key"
 SUPABASE_SERVICE_ROLE_KEY="your-service-role-key"
-SUPABASE_JWT_SECRET="your-jwt-secret"
+# Optional: for verifying Supabase-issued JWTs
+# SUPABASE_JWT_SECRET="your-jwt-secret"
 \`\`\`
 
 **How to get these:**
@@ -59,7 +59,6 @@ openssl rand -base64 32
 
 \`\`\`bash
 STRIPE_SECRET_KEY="sk_test_..."
-STRIPE_PUBLISHABLE_KEY="pk_test_..."
 NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY="pk_test_..."
 \`\`\`
 
@@ -105,6 +104,10 @@ npx prisma db push
 \`\`\`bash
 psql $POSTGRES_URL < scripts/01-initialize-database.sql
 \`\`\`
+
+## Supabase ↔ GitHub Integration
+
+To link your Supabase project to this GitHub repository (enables database branching and preview environments), follow the [Supabase GitHub Integration Guide](SUPABASE_GITHUB_INTEGRATION.md).
 
 ## Verify Setup
 
