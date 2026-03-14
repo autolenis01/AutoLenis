@@ -31,18 +31,19 @@ const envSchema = z.object({
   FROM_EMAIL: z.string().email("FROM_EMAIL must be a valid email address (verified Resend sender)").optional(),
   RESEND_FROM_EMAIL: z.string().email("RESEND_FROM_EMAIL must be a valid email address").optional(),
 
-  // Supabase (Optional — set by Vercel-Supabase integration)
+  // Supabase (Optional)
   SUPABASE_URL: z.string().url("SUPABASE_URL must be a valid URL").optional(),
-  SUPABASE_JWT_SECRET: z.string().min(1).optional(),
+  SUPABASE_JWT_SECRET: z.string().min(1, "SUPABASE_JWT_SECRET must not be empty").optional(),
 
-  // Webhooks (Optional — needed only when e-sign webhooks are configured)
-  ESIGN_WEBHOOK_SECRET: z.string().min(1).optional(),
+  // Database URLs (Optional — used by Prisma directUrl and migration scripts)
+  POSTGRES_URL: z.string().url("POSTGRES_URL must be a valid URL").optional(),
+  POSTGRES_URL_NON_POOLING: z.string().url("POSTGRES_URL_NON_POOLING must be a valid URL").optional(),
 
-  // AI / Gemini (Optional — needed for AI assistant features)
-  GEMINI_API_KEY: z.string().min(1).optional(),
+  // E-sign webhooks (Optional)
+  ESIGN_WEBHOOK_SECRET: z.string().min(1, "ESIGN_WEBHOOK_SECRET must not be empty").optional(),
 
-  // Admin bootstrap (Optional — set temporarily to create the first admin account)
-  ADMIN_REGISTRATION_CODE: z.string().min(1).optional(),
+  // AI / Gemini (Optional)
+  GEMINI_API_KEY: z.string().min(1, "GEMINI_API_KEY must not be empty").optional(),
 
   // Optional but recommended
   NEXT_PUBLIC_APP_URL: z.string().url().optional(),

@@ -11,8 +11,7 @@ ALTER TABLE "Auction" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "AuctionOffer" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "SelectedDeal" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "InventoryItem" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "Offer" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "Contract" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "ContractDocument" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "FinancingOffer" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "InsuranceQuote" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "InsurancePolicy" ENABLE ROW LEVEL SECURITY;
@@ -173,16 +172,16 @@ CREATE POLICY "Dealers can manage their own inventory"
     OR auth.is_admin()
   );
 
--- Contract Policies
+-- ContractDocument Policies
 CREATE POLICY "Buyers can view their contracts"
-  ON "Contract" FOR SELECT
+  ON "ContractDocument" FOR SELECT
   USING (
     "dealId" IN (SELECT id FROM "SelectedDeal" WHERE "buyerId" = auth.user_id())
     OR auth.is_admin()
   );
 
 CREATE POLICY "Dealers can view contracts for their deals"
-  ON "Contract" FOR SELECT
+  ON "ContractDocument" FOR SELECT
   USING (
     "dealId" IN (
       SELECT sd.id FROM "SelectedDeal" sd
@@ -193,7 +192,7 @@ CREATE POLICY "Dealers can view contracts for their deals"
   );
 
 CREATE POLICY "Admins have full access to contracts"
-  ON "Contract" FOR ALL
+  ON "ContractDocument" FOR ALL
   USING (auth.is_admin())
   WITH CHECK (auth.is_admin());
 
