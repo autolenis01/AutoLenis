@@ -14,7 +14,7 @@ Use this checklist before deploying to production to ensure all systems are oper
 - [ ] Email provider key is set (`RESEND_API_KEY`)
 - [ ] `NEXT_PUBLIC_APP_URL` points to production domain
 - [ ] `CRON_SECRET` is set for scheduled jobs
-- [ ] `ADMIN_REGISTRATION_CODE` is set to restrict admin signups
+- [ ] `ADMIN_BOOTSTRAP_SECRET` is set to restrict admin signups (remove after first admin is created)
 
 ### Database
 - [ ] Database migrations have been run successfully

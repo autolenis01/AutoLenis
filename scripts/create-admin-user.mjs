@@ -34,8 +34,13 @@ async function hashPassword(password) {
 }
 
 async function createAdminUser() {
-  const email = "info@autolenis.com"
-  const password = "123Password"
+  const email = process.env.SUPER_ADMIN_EMAIL
+  const password = process.env.SUPER_ADMIN_TEMP_PASSWORD
+
+  if (!email || !password) {
+    console.error("Error: SUPER_ADMIN_EMAIL and SUPER_ADMIN_TEMP_PASSWORD environment variables are required")
+    process.exit(1)
+  }
   
   console.log("Creating admin user...")
   console.log("Email:", email)
@@ -134,8 +139,7 @@ async function createAdminUser() {
   console.log("Created AdminUser entry")
   console.log("")
   console.log("=== Admin User Created Successfully ===")
-  console.log("Email: info@autolenis.com")
-  console.log("Password: 123Password")
+  console.log("Email:", email)
   console.log("Role: ADMIN")
   console.log("")
   console.log("You can now log in at /admin/login")
