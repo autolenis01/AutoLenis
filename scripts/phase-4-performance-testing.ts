@@ -119,12 +119,12 @@ async function testComplexQueries(): Promise<void> {
 
   try {
     // JOIN query: Dealers with their users
-    const dealersWithUsers = await measureQuery<Awaited<ReturnType<typeof prisma.dealer.findMany<{ include: { DealerUser: true } }>>>>(
+    const dealersWithUsers = await measureQuery<Awaited<ReturnType<typeof prisma.dealer.findMany>>>(
       "Dealer with users (JOIN)",
       () =>
         prisma.dealer.findMany({
           include: {
-            DealerUser: true,
+            dealerUsers: true,
           },
           take: 20,
         }),
@@ -137,10 +137,10 @@ async function testComplexQueries(): Promise<void> {
       () =>
         prisma.workspace.findMany({
           include: {
-            User: {
+            users: {
               take: 10,
             },
-            Dealer: {
+            dealers: {
               take: 5,
             },
           },

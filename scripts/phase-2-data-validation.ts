@@ -121,7 +121,7 @@ async function validateDataConsistency(): Promise<void> {
     // Check Dealer -> DealerUser relationships
     const dealersWithUsers = await prisma.dealer.count({
       where: {
-        DealerUser: {
+        dealerUsers: {
           some: {},
         },
       },
