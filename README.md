@@ -148,10 +148,11 @@ The platform supports multiple user roles:
    \`\`\`bash
    SUPER_ADMIN_EMAIL=admin@autolenis.com
    SUPER_ADMIN_TEMP_PASSWORD=your-secure-password
-   ADMIN_REGISTRATION_CODE=your-secret-code
+   ADMIN_BOOTSTRAP_SECRET=your-bootstrap-secret
    \`\`\`
 
-2. Use the admin signup endpoint with the registration code
+2. Run the admin creation script: `node scripts/create-admin-user.mjs`
+3. Alternatively, use the admin signup endpoint with the bootstrap secret
 
 ## Security
 

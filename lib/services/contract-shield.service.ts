@@ -61,7 +61,7 @@ export async function assertCanModifyContractFix(
   const isAdmin = actor.role === "ADMIN" || actor.role === "SUPER_ADMIN"
   if (isAdmin) return
 
-  const fixItem = await prisma.contractFixItem.findUnique({
+  const fixItem = await prisma.fixListItem.findUnique({
     where: { id: fixItemId },
     select: {
       scan: {

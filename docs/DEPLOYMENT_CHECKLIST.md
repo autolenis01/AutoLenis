@@ -8,13 +8,13 @@ Use this checklist before deploying to production to ensure all systems are oper
 - [ ] All required environment variables are set in Vercel project settings
 - [ ] `JWT_SECRET` is a strong, randomly generated string (min 32 characters)
 - [ ] `SUPABASE_SERVICE_ROLE_KEY` is set (for server-side operations)
-- [ ] `SUPABASE_ANON_KEY` is set (for client-side operations)
-- [ ] `STRIPE_SECRET_KEY` and `STRIPE_PUBLISHABLE_KEY` are production keys
+- [ ] `NEXT_PUBLIC_SUPABASE_ANON_KEY` is set (for client-side operations)
+- [ ] `STRIPE_SECRET_KEY` and `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` are production keys
 - [ ] `STRIPE_WEBHOOK_SECRET` is configured for production webhooks
 - [ ] Email provider key is set (`RESEND_API_KEY`)
 - [ ] `NEXT_PUBLIC_APP_URL` points to production domain
 - [ ] `CRON_SECRET` is set for scheduled jobs
-- [ ] `ADMIN_REGISTRATION_CODE` is set to restrict admin signups
+- [ ] `ADMIN_BOOTSTRAP_SECRET` is set to restrict admin signups (remove after first admin is created)
 
 ### Database
 - [ ] Database migrations have been run successfully
