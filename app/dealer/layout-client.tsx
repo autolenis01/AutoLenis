@@ -148,14 +148,13 @@ export function DealerLayoutClient({
   userEmail: string
   portalLinks?: PortalLink[]
 }) {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  // Store the pathname at which the menu was opened; menu is "open" only on that pathname.
+  // This avoids a useEffect to close the menu on navigation.
+  const [menuOpenPathname, setMenuOpenPathname] = useState<string | null>(null)
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const pathname = usePathname()
 
-  // Close mobile menu on navigation
-  useEffect(() => {
-    setMobileMenuOpen(false)
-  }, [pathname])
+  const mobileMenuOpen = menuOpenPathname === pathname
 
   // Lock body scroll when mobile menu is open
   useEffect(() => {
@@ -184,7 +183,7 @@ export function DealerLayoutClient({
     }
   }
 
-  const closeMobileMenu = useCallback(() => setMobileMenuOpen(false), [])
+  const closeMobileMenu = useCallback(() => setMenuOpenPathname(null), [])
 
   return (
     <div className="min-h-screen bg-background">
@@ -199,7 +198,7 @@ export function DealerLayoutClient({
             <div className="flex items-center gap-3">
               <button
                 type="button"
-                onClick={() => setMobileMenuOpen(true)}
+                onClick={() => setMenuOpenPathname(pathname)}
                 className="lg:hidden p-2 -ml-2 hover:bg-white/10 rounded-lg transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center focus-ring"
                 aria-label="Open navigation menu"
                 aria-expanded={mobileMenuOpen}
