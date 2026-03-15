@@ -4,10 +4,12 @@ import { use, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { ArrowLeft, Building2, Package, Gavel, FileText, Shield, BarChart3, CreditCard, Clock, Settings } from "lucide-react"
+import { ArrowLeft, Building2, Package, Gavel, FileText, Shield, BarChart3, CreditCard, Clock, Settings, FileSignature } from "lucide-react"
 import useSWR from "swr"
 import Link from "next/link"
 import { csrfHeaders } from "@/lib/csrf-client"
+import { DealerAgreementTimeline } from "@/components/admin/dealer-agreement-timeline"
+import { DealerAgreementActions } from "@/components/admin/dealer-agreement-actions"
 
 const fetcher = (url: string) => fetch(url).then((res) => {
   if (!res.ok) return res.json().then((body: any) => Promise.reject(body))
@@ -193,6 +195,7 @@ export default function AdminDealerDetailPage({ params }: { params: Promise<{ de
           <TabsTrigger value="documents">Documents</TabsTrigger>
           <TabsTrigger value="payments">Payments / Fees</TabsTrigger>
           <TabsTrigger value="activity">Activity Log</TabsTrigger>
+          <TabsTrigger value="agreement"><FileSignature className="mr-1 h-3 w-3 inline" />Agreement</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
 
@@ -683,6 +686,10 @@ export default function AdminDealerDetailPage({ params }: { params: Promise<{ de
           </Card>
         </TabsContent>
 
+        <TabsContent value="agreement">
+          <AgreementTab dealerId={dealerId} dealer={data.dealer} onRefresh={() => mutate()} />
+        </TabsContent>
+
         <TabsContent value="settings">
           <Card>
             <CardHeader>
@@ -768,6 +775,107 @@ export default function AdminDealerDetailPage({ params }: { params: Promise<{ de
           </Card>
         </TabsContent>
       </Tabs>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Agreement Tab (admin)
+// ---------------------------------------------------------------------------
+
+function AgreementTab({ dealerId, dealer, onRefresh }: {
+  dealerId: string
+  dealer: Record<string, unknown>
+  onRefresh: () => void
+}) {
+  const { data: agreementData, mutate: mutateAgreement } = useSWR(
+    `/api/dealer/onboarding/agreement/status?dealerId=${dealerId}`,
+    fetcher,
+  )
+
+  const agreement = agreementData?.agreement
+  const status = agreementData?.status || "REQUIRED"
+
+  const handleActionComplete = () => {
+    mutateAgreement()
+    onRefresh()
+  }
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FileSignature className="h-5 w-5" />
+            Dealer Agreement
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-3">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Agreement Status</p>
+                <p className="font-semibold">{status}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Agreement Required</p>
+                <p>{dealer.agreementRequired ? "Yes" : "No"}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Agreement Completed</p>
+                <p>{dealer.agreementCompleted ? "Yes" : "No"}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">DocuSign Blocked</p>
+                <p>{dealer.docusignBlocked ? "Yes — dealer is blocked" : "No"}</p>
+              </div>
+            </div>
+
+            {agreement && (
+              <div className="space-y-3">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Version</p>
+                  <p>{agreement.version || "—"}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Envelope ID</p>
+                  <p className="break-all text-xs">{agreement.envelopeId || "—"}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Signer</p>
+                  <p>{agreement.signerName} ({agreement.signerEmail})</p>
+                </div>
+                {agreement.signedDocumentStoragePath && (
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Signed PDF</p>
+                    <p className="break-all text-xs">{agreement.signedDocumentStoragePath}</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Timeline */}
+      {agreement && (
+        <Card>
+          <CardContent className="pt-6">
+            <DealerAgreementTimeline agreement={agreement} />
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Admin Actions */}
+      <Card>
+        <CardContent className="pt-6">
+          <DealerAgreementActions
+            dealerId={dealerId}
+            agreementStatus={status}
+            onActionComplete={handleActionComplete}
+          />
+        </CardContent>
+      </Card>
     </div>
   )
 }
