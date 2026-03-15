@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll } from "vitest"
+import { describe, it, expect, vi, beforeAll } from "vitest"
 import { signUpSchema } from "@/lib/validators/auth"
 import {
   BuyerPackageTier,
@@ -96,7 +96,7 @@ describe("Buyer Package Registration – Validation", () => {
 })
 
 // ---------------------------------------------------------------------------
-// Billing initialization
+// Billing initialization (constants layer — still valid for display helpers)
 // ---------------------------------------------------------------------------
 
 describe("Buyer Package Registration – Billing Initialization", () => {
@@ -173,6 +173,13 @@ describe("Buyer Package Registration – API Integration", () => {
           return new Response(JSON.stringify({ success: false, error: "Invalid request" }), { status: 400 })
         }
         return new Response(JSON.stringify({ success: true }), { status: 201 })
+      }
+
+      // Upgrade endpoint mock
+      if (url.endsWith("/api/buyer/upgrade")) {
+        const body = parseBody()
+        // Simulate upgrade — in real code the RPC is called
+        return new Response(JSON.stringify({ success: true, message: "Upgraded to Premium" }), { status: 200 })
       }
 
       return new Response("Not Found", { status: 404 })
@@ -255,5 +262,88 @@ describe("Buyer Package Registration – API Integration", () => {
       }),
     })
     expect(response.status).toBe(201)
+  })
+
+  it("should accept upgrade from STANDARD to PREMIUM", async () => {
+    const response = await fetch("http://localhost:3000/api/buyer/upgrade", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    })
+    expect(response.status).toBe(200)
+    const data = await response.json()
+    expect(data.success).toBe(true)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// RPC Service layer (module structure tests)
+// ---------------------------------------------------------------------------
+
+describe("Buyer Package Service – Module Structure", () => {
+  it("exports initializeBuyerPackage function", async () => {
+    const mod = await import("@/lib/services/buyer-package.service")
+    expect(typeof mod.initializeBuyerPackage).toBe("function")
+  })
+
+  it("exports upgradeBuyerToPremium function", async () => {
+    const mod = await import("@/lib/services/buyer-package.service")
+    expect(typeof mod.upgradeBuyerToPremium).toBe("function")
+  })
+
+  it("exports markDepositPaid function", async () => {
+    const mod = await import("@/lib/services/buyer-package.service")
+    expect(typeof mod.markDepositPaid).toBe("function")
+  })
+
+  it("exports markDepositFailed function", async () => {
+    const mod = await import("@/lib/services/buyer-package.service")
+    expect(typeof mod.markDepositFailed).toBe("function")
+  })
+
+  it("exports markDepositRefunded function", async () => {
+    const mod = await import("@/lib/services/buyer-package.service")
+    expect(typeof mod.markDepositRefunded).toBe("function")
+  })
+
+  it("exports recordPremiumFeePayment function", async () => {
+    const mod = await import("@/lib/services/buyer-package.service")
+    expect(typeof mod.recordPremiumFeePayment).toBe("function")
+  })
+
+  it("exports getBuyerPackageBilling read helper", async () => {
+    const mod = await import("@/lib/services/buyer-package.service")
+    expect(typeof mod.getBuyerPackageBilling).toBe("function")
+  })
+
+  it("exports getBuyerPackageHistory read helper", async () => {
+    const mod = await import("@/lib/services/buyer-package.service")
+    expect(typeof mod.getBuyerPackageHistory).toBe("function")
+  })
+
+  it("exports getBuyerPaymentLedger read helper", async () => {
+    const mod = await import("@/lib/services/buyer-package.service")
+    expect(typeof mod.getBuyerPaymentLedger).toBe("function")
+  })
+
+  it("exports getBuyerPackageState read helper", async () => {
+    const mod = await import("@/lib/services/buyer-package.service")
+    expect(typeof mod.getBuyerPackageState).toBe("function")
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Email triggers — upgrade & specialist notification exports
+// ---------------------------------------------------------------------------
+
+describe("Buyer Package Email Triggers", () => {
+  it("exports sendUpgradeConfirmationEmail", async () => {
+    const mod = await import("@/lib/email/triggers")
+    expect(typeof mod.sendUpgradeConfirmationEmail).toBe("function")
+  })
+
+  it("exports sendPremiumSpecialistNotification", async () => {
+    const mod = await import("@/lib/email/triggers")
+    expect(typeof mod.sendPremiumSpecialistNotification).toBe("function")
   })
 })

@@ -4,7 +4,8 @@ import { hashPassword as hashPasswordUtil, verifyPassword as verifyPasswordUtil 
 import { createSession } from "@/lib/auth"
 import type { SignUpInput, SignInInput } from "@/lib/validators/auth"
 import { emailVerificationService } from "@/lib/services/email-verification.service"
-import { BuyerPackageTier, buildBillingInit, CURRENT_PACKAGE_VERSION } from "@/lib/constants/buyer-packages"
+import { BuyerPackageTier, CURRENT_PACKAGE_VERSION } from "@/lib/constants/buyer-packages"
+import { initializeBuyerPackage } from "@/lib/services/buyer-package.service"
 
 export class AuthService {
   static async signUp(input: SignUpInput) {
@@ -68,10 +69,10 @@ export class AuthService {
           throw new Error("Package tier is required for buyer registration")
         }
         const tier = input.packageTier as BuyerPackageTier
-        const billing = buildBillingInit(tier)
+        const buyerProfileId = crypto.randomUUID()
 
         const { error: profileError } = await supabase.from("BuyerProfile").insert({
-          id: crypto.randomUUID(),
+          id: buyerProfileId,
           userId: user.id,
           firstName: input.firstName,
           lastName: input.lastName,
@@ -80,18 +81,6 @@ export class AuthService {
           city: "",
           state: "",
           zip: "",
-          // Package selection
-          packageTier: tier,
-          packageSelectedAt: now,
-          packageSelectionSource: "REGISTRATION",
-          packageVersion: CURRENT_PACKAGE_VERSION,
-          // Billing initialization
-          depositRequired: billing.depositRequired,
-          depositAmount: billing.depositAmount,
-          depositStatus: billing.depositStatus,
-          depositCreditTreatment: billing.depositCreditTreatment,
-          premiumFeeTotal: billing.premiumFeeTotal,
-          premiumFeeRemaining: billing.premiumFeeRemaining,
           createdAt: now,
           updatedAt: now,
         })
@@ -100,7 +89,17 @@ export class AuthService {
           throw new Error(`Failed to create buyer profile. Please try again. (ref: ${correlationId})`)
         }
 
-        // Audit event: package selected at registration
+        // Initialize package + billing via canonical Supabase RPC
+        // This populates package columns on BuyerProfile, creates billing row,
+        // and writes initial history/ledger entries.
+        try {
+          await initializeBuyerPackage(buyerProfileId, tier, "REGISTRATION", CURRENT_PACKAGE_VERSION)
+        } catch (rpcError: any) {
+          console.error(`[AuthService.signUp] initializeBuyerPackage RPC failed correlationId=${correlationId}`, rpcError)
+          throw new Error(`Failed to initialize buyer package. Please try again. (ref: ${correlationId})`)
+        }
+
+        // Audit event: package selected at registration (best-effort)
         try {
           await supabase.from("AdminAuditLog").insert({
             id: crypto.randomUUID(),

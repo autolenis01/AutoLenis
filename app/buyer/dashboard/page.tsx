@@ -1,10 +1,12 @@
 "use client"
+import { useState } from "react"
 import Link from "next/link"
 import { ProtectedRoute } from "@/components/layout/protected-route"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Badge } from "@/components/ui/badge"
+import { csrfHeaders } from "@/lib/csrf-client"
 import {
   Car,
   CheckCircle2,
@@ -22,6 +24,9 @@ import {
   CircleDot,
   Circle,
   AlertTriangle,
+  Crown,
+  Star,
+  Loader2,
 } from "lucide-react"
 import useSWR from "swr"
 import { useUser } from "@/hooks/use-user"
@@ -65,6 +70,9 @@ interface DashboardProfile {
   firstName?: string | null
   lastName?: string | null
   email?: string | null
+  package_tier?: string | null
+  package_selected_at?: string | null
+  package_upgraded_at?: string | null
 }
 
 interface DashboardData {
@@ -72,6 +80,15 @@ interface DashboardData {
   preQual?: PreQualData | null
   stats?: DashboardStats
   recentActivity?: ActivityItem[]
+  billing?: {
+    deposit_status?: string
+    deposit_amount_cents?: number
+    deposit_credit_treatment?: string
+    premium_fee_total_cents?: number
+    premium_fee_credit_from_deposit_cents?: number
+    premium_fee_remaining_cents?: number
+    premium_fee_status?: string
+  } | null
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -245,10 +262,11 @@ function DashboardSkeleton() {
 
 // ── Main Dashboard Page ──────────────────────────────────────────────────────
 export default function BuyerDashboardPage() {
-  const { data, error, isLoading } = useSWR<DashboardData>("/api/buyer/dashboard", fetcher, {
+  const { data, error, isLoading, mutate } = useSWR<DashboardData>("/api/buyer/dashboard", fetcher, {
     refreshInterval: 30_000,
   })
   const { user: currentUser } = useUser()
+  const [upgrading, setUpgrading] = useState(false)
 
   const profile = data?.profile
   const preQual = data?.preQual
@@ -351,6 +369,60 @@ export default function BuyerDashboardPage() {
                   </Button>
                 </Link>
               </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* ── Package & Billing Card ──────────────────────────── */}
+        {profile?.package_tier && (
+          <Card className={profile.package_tier === "PREMIUM" ? "border-purple-200 bg-purple-50/30 dark:border-purple-900/40 dark:bg-purple-950/10" : ""}>
+            <CardContent className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-start gap-3">
+                <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5 ${profile.package_tier === "PREMIUM" ? "bg-purple-100 dark:bg-purple-900/40" : "bg-gray-100 dark:bg-gray-800"}`}>
+                  {profile.package_tier === "PREMIUM" ? (
+                    <Crown className="h-5 w-5 text-purple-600 dark:text-purple-400" aria-hidden="true" />
+                  ) : (
+                    <Star className="h-5 w-5 text-gray-500 dark:text-gray-400" aria-hidden="true" />
+                  )}
+                </div>
+                <div>
+                  <p className="font-semibold text-sm">
+                    {profile.package_tier === "PREMIUM" ? "Premium Concierge Plan" : "Standard / Free Plan"}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {data?.billing?.deposit_status === "PAID"
+                      ? "Deposit paid ✓"
+                      : "$99 deposit required to start auction"}
+                    {profile.package_tier === "PREMIUM" && data?.billing && (
+                      <> · Premium fee: ${((data.billing.premium_fee_remaining_cents ?? 0) / 100).toFixed(0)} remaining</>
+                    )}
+                  </p>
+                </div>
+              </div>
+              {profile.package_tier === "STANDARD" && (
+                <Button
+                  size="sm"
+                  className="text-xs h-8"
+                  disabled={upgrading}
+                  onClick={async () => {
+                    setUpgrading(true)
+                    try {
+                      const res = await fetch("/api/buyer/upgrade", { method: "POST", headers: csrfHeaders({ "Content-Type": "application/json" }), body: JSON.stringify({}) })
+                      if (res.ok) {
+                        await mutate()
+                      }
+                    } catch { /* ignore */ } finally {
+                      setUpgrading(false)
+                    }
+                  }}
+                >
+                  {upgrading ? (
+                    <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Upgrading…</>
+                  ) : (
+                    "Upgrade to Premium"
+                  )}
+                </Button>
+              )}
             </CardContent>
           </Card>
         )}

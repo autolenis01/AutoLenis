@@ -6,6 +6,7 @@ import { prisma } from "@/lib/db"
 import { affiliateService } from "@/lib/services/affiliate.service"
 import { logger } from "@/lib/logger"
 import { notifyAdmin } from "@/lib/notifications/notification.service"
+import { markDepositPaid, markDepositFailed, markDepositRefunded } from "@/lib/services/buyer-package.service"
 import type Stripe from "stripe"
 
 export const dynamic = "force-dynamic"
@@ -169,6 +170,20 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
         dedupeKey: `deposit.succeeded.${session.payment_intent}`,
       })
     }
+
+    // Sync deposit status to canonical buyer_package_billing via RPC (best-effort)
+    if (metadata['buyerId']) {
+      try {
+        await markDepositPaid(
+          metadata['buyerId'],
+          session.payment_intent as string,
+          session.amount_total ? session.amount_total / 100 : 99,
+          { sessionId: session.id, auctionId: metadata['auctionId'] },
+        )
+      } catch (rpcErr) {
+        logger.error("mark_buyer_deposit_paid RPC failed (non-blocking)", rpcErr instanceof Error ? rpcErr : undefined)
+      }
+    }
   } else if (type === "service_fee") {
     // Read payment record before transaction (Supabase join for nested select)
     const supabase = await createClient()
@@ -325,6 +340,20 @@ async function handlePaymentIntentFailed(paymentIntent: Stripe.PaymentIntent) {
         dedupeKey: `deposit.failed.${paymentIntent.id}`,
       })
     }
+
+    // Sync deposit failure to canonical buyer_package_billing via RPC (best-effort)
+    if (metadata['buyerId']) {
+      try {
+        await markDepositFailed(
+          metadata['buyerId'],
+          paymentIntent.id,
+          (paymentIntent.amount || 9900) / 100,
+          { errorCode: paymentIntent.last_payment_error?.code },
+        )
+      } catch (rpcErr) {
+        logger.error("mark_buyer_deposit_failed RPC failed (non-blocking)", rpcErr instanceof Error ? rpcErr : undefined)
+      }
+    }
   }
 
   if (metadata['type'] === "service_fee") {
@@ -420,6 +449,18 @@ async function handleChargeRefunded(charge: Stripe.Charge) {
         metadata: { amount: depositPayment.amount, chargeId: charge.id },
         dedupeKey: `refund.completed.${charge.id}`,
       })
+    }
+
+    // Sync deposit refund to canonical buyer_package_billing via RPC (best-effort)
+    try {
+      await markDepositRefunded(
+        depositPayment.buyerId,
+        paymentIntentId,
+        depositPayment.amount || 99,
+        { chargeId: charge.id },
+      )
+    } catch (rpcErr) {
+      logger.error("mark_buyer_deposit_refunded RPC failed (non-blocking)", rpcErr instanceof Error ? rpcErr : undefined)
     }
   }
 

@@ -87,7 +87,23 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
       return NextResponse.json({ error: "Buyer not found" }, { status: 404 })
     }
 
-    return NextResponse.json({ buyer })
+    // Fetch package billing, history, and payment ledger from canonical tables
+    const buyerProfileId = buyer.buyerProfile?.id
+    let packageBilling = null
+    let packageHistory: any[] = []
+    let paymentLedger: any[] = []
+    if (buyerProfileId) {
+      const [billingRes, historyRes, ledgerRes] = await Promise.all([
+        supabase.from("buyer_package_billing").select("*").eq("buyer_id", buyerProfileId).maybeSingle(),
+        supabase.from("buyer_package_history").select("*").eq("buyer_id", buyerProfileId).order("changed_at", { ascending: false }),
+        supabase.from("buyer_payment_ledger").select("*").eq("buyer_id", buyerProfileId).order("created_at", { ascending: false }),
+      ])
+      packageBilling = billingRes.data || null
+      packageHistory = historyRes.data || []
+      paymentLedger = ledgerRes.data || []
+    }
+
+    return NextResponse.json({ buyer, packageBilling, packageHistory, paymentLedger })
   } catch (error) {
     const correlationId = randomUUID()
     console.error("[Admin Buyer Detail Error]", { correlationId, error })
