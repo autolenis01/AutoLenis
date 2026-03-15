@@ -1,4 +1,6 @@
 import { test, expect } from "@playwright/test"
+import { URL } from "node:url"
+import dns from "node:dns/promises"
 
 /**
  * Buyer Package Staging UAT — E2E Validation
@@ -17,10 +19,38 @@ import { test, expect } from "@playwright/test"
 const BASE = process.env.SMOKE_BASE_URL ?? "http://localhost:3000"
 const TEST_BASE = process.env.SMOKE_TEST_BASE_URL ?? BASE
 
+// Pre-check: resolve target hostname before running tests
+let targetReachable: boolean | null = null
+async function checkTargetReachable(): Promise<boolean> {
+  if (targetReachable !== null) return targetReachable
+  try {
+    const hostname = new URL(TEST_BASE).hostname
+    if (hostname === "localhost" || hostname === "127.0.0.1") {
+      targetReachable = true
+      return true
+    }
+    await dns.lookup(hostname)
+    targetReachable = true
+  } catch {
+    targetReachable = false
+  }
+  return targetReachable
+}
+
+function skipIfUnreachable() {
+  test.beforeEach(async () => {
+    const reachable = await checkTargetReachable()
+    if (!reachable) {
+      test.skip(true, `Target ${TEST_BASE} is not reachable — DNS lookup failed`)
+    }
+  })
+}
+
 // ─── Flow 1: Register buyer as STANDARD ──────────────────────────────────────
 
 test.describe("Flow 1 — Register buyer as STANDARD", () => {
   test.setTimeout(30_000)
+  skipIfUnreachable()
 
   test("signup page renders with package selection", async ({ page }) => {
     const response = await page.goto(`${TEST_BASE}/auth/signup`, {
@@ -83,6 +113,7 @@ test.describe("Flow 1 — Register buyer as STANDARD", () => {
 
 test.describe("Flow 2 — Register buyer as PREMIUM", () => {
   test.setTimeout(30_000)
+  skipIfUnreachable()
 
   test("signup API validates PREMIUM packageTier", async ({ request }) => {
     const response = await request.post(`${TEST_BASE}/api/auth/signup`, {
@@ -140,6 +171,7 @@ test.describe("Flow 2 — Register buyer as PREMIUM", () => {
 
 test.describe("Flow 3 — Upgrade STANDARD buyer to PREMIUM", () => {
   test.setTimeout(30_000)
+  skipIfUnreachable()
 
   test("upgrade API requires authentication", async ({ request }) => {
     const response = await request.post(`${TEST_BASE}/api/buyer/upgrade`, {
@@ -171,6 +203,7 @@ test.describe("Flow 3 — Upgrade STANDARD buyer to PREMIUM", () => {
 
 test.describe("Flow 4 — $99 deposit payment and canonical billing", () => {
   test.setTimeout(30_000)
+  skipIfUnreachable()
 
   test("Stripe webhook rejects requests without valid signature", async ({ request }) => {
     const response = await request.post(`${TEST_BASE}/api/webhooks/stripe`, {
@@ -223,6 +256,7 @@ test.describe("Flow 4 — $99 deposit payment and canonical billing", () => {
 
 test.describe("Flow 5 — PREMIUM concierge fee payment", () => {
   test.setTimeout(30_000)
+  skipIfUnreachable()
 
   test("fee options API requires authentication", async ({ request }) => {
     const response = await request.get(`${TEST_BASE}/api/buyer/fee-options`)
@@ -261,6 +295,7 @@ test.describe("Flow 5 — PREMIUM concierge fee payment", () => {
 
 test.describe("Flow 6 — Admin buyer detail page canonical data", () => {
   test.setTimeout(30_000)
+  skipIfUnreachable()
 
   test("admin buyers list loads without 500", async ({ page }) => {
     const response = await page.goto(`${TEST_BASE}/admin/buyers`, {
@@ -304,6 +339,7 @@ test.describe("Flow 6 — Admin buyer detail page canonical data", () => {
 
 test.describe("Flow 7 — Email delivery wiring validation", () => {
   test.setTimeout(15_000)
+  skipIfUnreachable()
 
   test("health endpoint returns structured response", async ({ request }) => {
     const response = await request.get(`${TEST_BASE}/api/health`)
