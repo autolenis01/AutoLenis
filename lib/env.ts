@@ -40,6 +40,15 @@ const envSchema = z.object({
   // E-sign webhooks (Optional)
   ESIGN_WEBHOOK_SECRET: z.string().min(1, "ESIGN_WEBHOOK_SECRET must not be empty").optional(),
 
+  // DocuSign (Optional — required for dealer agreement signing)
+  DOCUSIGN_ACCOUNT_ID: z.string().min(1).optional(),
+  DOCUSIGN_INTEGRATION_KEY: z.string().min(1).optional(),
+  DOCUSIGN_SECRET_KEY: z.string().min(1).optional(),
+  DOCUSIGN_BASE_URL: z.string().url().optional(),
+  DOCUSIGN_OAUTH_BASE_URL: z.string().url().optional(),
+  DOCUSIGN_DEALER_TEMPLATE_ID: z.string().min(1).optional(),
+  DOCUSIGN_WEBHOOK_SECRET: z.string().min(1).optional(),
+
   // AI / Gemini (Optional)
   GEMINI_API_KEY: z.string().min(1, "GEMINI_API_KEY must not be empty").optional(),
 

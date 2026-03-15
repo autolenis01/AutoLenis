@@ -236,6 +236,16 @@ model Dealer {
   country      String? @default("US")
   active       Boolean @default(true)
 
+  // Onboarding state fields
+  onboardingStatus     String?   // DRAFT, SUBMITTED, UNDER_REVIEW, APPROVED, REJECTED, SUSPENDED
+  accessState          String?   @default("NO_ACCESS") // NO_ACCESS, LIMITED_ACCESS, MARKETPLACE_ENABLED, INVENTORY_ENABLED, FULLY_ACTIVE, SUSPENDED
+  agreementSigned      Boolean   @default(false)
+  agreementSignedAt    DateTime?
+  agreementDocumentId  String?
+  complianceApproved   Boolean   @default(false)
+  complianceReviewedAt DateTime?
+  activatedAt          DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -249,6 +259,8 @@ model Dealer {
 
   @@index([licenseNumber])
   @@index([workspaceId])
+  @@index([onboardingStatus])
+  @@index([accessState])
 }
 
 model DealerUser {
@@ -258,6 +270,10 @@ model DealerUser {
   dealerId  String
   dealer    Dealer  @relation(fields: [dealerId], references: [id], onDelete: Cascade)
   roleLabel String?
+
+  // Onboarding fields
+  isPrimary    Boolean @default(false)
+  inviteStatus String  @default("accepted")
 
   // Workspace / tenant isolation
   workspaceId String?
@@ -270,6 +286,74 @@ model DealerUser {
   @@index([dealerId])
   @@index([workspaceId])
   @@map("DealerUser")
+}
+
+// ---------------------------------------------------------------------------
+// Dealer Application — Onboarding Source of Truth
+// ---------------------------------------------------------------------------
+
+model DealerApplication {
+  id          String  @id @default(cuid())
+  dealerId    String?
+  workspaceId String?
+
+  // Business identity
+  legalBusinessName    String
+  dbaName              String?
+  entityType           String?
+  dealerLicenseNumber  String
+  licenseState         String
+  taxIdLast4           String?
+
+  // Contact info
+  businessEmail   String
+  businessPhone   String?
+  websiteUrl      String?
+  addressLine1    String?
+  addressLine2    String?
+  city            String?
+  state           String?
+  zipCode         String?
+
+  // Principal contact
+  principalName   String
+  principalEmail  String
+  principalPhone  String?
+
+  // Application submitter
+  applicantUserId String?
+
+  // Status machine
+  status      String @default("DRAFT")      // DRAFT, SUBMITTED, UNDER_REVIEW, DOCS_REQUESTED, AGREEMENT_SENT, AGREEMENT_SIGNED, COMPLIANCE_REVIEW, APPROVED, REJECTED, SUSPENDED
+  accessState String @default("NO_ACCESS")  // NO_ACCESS, LIMITED_ACCESS, MARKETPLACE_ENABLED, INVENTORY_ENABLED, FULLY_ACTIVE, SUSPENDED
+
+  // Agreement tracking
+  agreementTemplateVersion String?
+  agreementEnvelopeId      String?
+  agreementSentAt          DateTime?
+  agreementSignedAt        DateTime?
+  agreementStoragePath     String?
+  agreementDocumentId      String?
+
+  // Review / decision
+  reviewNotes     String?
+  approvedBy      String?
+  approvedAt      DateTime?
+  rejectedBy      String?
+  rejectedAt      DateTime?
+  rejectionReason String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("dealer_applications_v2")
+  @@index([dealerId])
+  @@index([workspaceId])
+  @@index([applicantUserId])
+  @@index([status])
+  @@index([accessState])
+  @@index([agreementEnvelopeId])
+  @@index([createdAt])
 }
 
 model AdminUser {
