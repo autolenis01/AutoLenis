@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { use } from "react"
 import { ProtectedRoute } from "@/components/layout/protected-route"
+import { VehicleCardCompact, VehicleLoadingSkeleton, VehicleEmptyState } from "@/components/vehicles"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -57,9 +58,16 @@ export default function AuctionStatusPage({ params }: { params: Promise<{ id: st
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-      </div>
+      <ProtectedRoute allowedRoles={["BUYER"]}>
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div className="h-9 w-48 bg-muted rounded animate-pulse" />
+            <div className="h-9 w-24 bg-muted rounded-full animate-pulse" />
+          </div>
+          <div className="h-56 bg-muted rounded-xl animate-pulse" />
+          <VehicleLoadingSkeleton variant="compact" count={3} />
+        </div>
+      </ProtectedRoute>
     )
   }
 
@@ -134,32 +142,19 @@ export default function AuctionStatusPage({ params }: { params: Promise<{ id: st
             <CardDescription>Dealers are bidding on these vehicles</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
+            <div className="space-y-3">
               {auction.shortlist?.items?.map((item: any) => (
-                <div
+                <VehicleCardCompact
                   key={item.id}
-                  className="flex items-center gap-4 p-4 border rounded-lg hover:bg-muted/50 transition-colors"
-                >
-                  <div className="h-20 w-32 bg-muted rounded flex-shrink-0 flex items-center justify-center">
-                    <span className="text-xs text-muted-foreground">Vehicle Image</span>
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-semibold">
-                      {item.inventoryItem?.vehicle?.year} {item.inventoryItem?.vehicle?.make}{" "}
-                      {item.inventoryItem?.vehicle?.model}
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                      {item.inventoryItem?.vehicle?.mileage?.toLocaleString()} miles •{" "}
-                      {item.inventoryItem?.vehicle?.trim}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-sm text-muted-foreground">Listed Price</div>
-                    <div className="text-lg font-bold text-[#0066FF]">
-                      ${item.inventoryItem?.price?.toLocaleString()}
-                    </div>
-                  </div>
-                </div>
+                  year={item.inventoryItem?.vehicle?.year}
+                  make={item.inventoryItem?.vehicle?.make}
+                  model={item.inventoryItem?.vehicle?.model}
+                  trim={item.inventoryItem?.vehicle?.trim}
+                  imageSrc={item.inventoryItem?.vehicle?.images?.[0] || null}
+                  mileage={item.inventoryItem?.vehicle?.mileage}
+                  price={item.inventoryItem?.price}
+                  priceLabel="Listed Price"
+                />
               ))}
             </div>
           </CardContent>

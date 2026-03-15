@@ -6,6 +6,8 @@ import type { AdminListColumn } from "@/components/admin/admin-list-page-shell"
 import { useAdminList } from "@/hooks/use-admin-list"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
+import { VehicleStatusChip } from "@/components/vehicles"
+import type { ChipVariant } from "@/components/vehicles"
 import { Globe, Car, DollarSign } from "lucide-react"
 
 const formatCurrency = (cents: number) =>
@@ -53,14 +55,14 @@ const columns: AdminListColumn[] = [
     key: "status",
     render: (item: any) => {
       const s = (item.status || "ACTIVE").toUpperCase()
-      const colors: Record<string, string> = {
-        ACTIVE: "bg-green-100 text-green-800",
-        STALE: "bg-yellow-100 text-yellow-800",
-        SOLD: "bg-gray-100 text-gray-800",
-        PROMOTED: "bg-purple-100 text-purple-800",
-        DUPLICATE: "bg-orange-100 text-orange-800",
+      const chipMap: Record<string, ChipVariant> = {
+        ACTIVE: "available",
+        STALE: "stale",
+        PROMOTED: "promoted",
       }
-      return <span className={`px-2 py-1 text-xs font-medium rounded-full ${colors[s] || "bg-gray-100 text-gray-800"}`}>{s}</span>
+      const variant = chipMap[s]
+      if (variant) return <VehicleStatusChip variant={variant} />
+      return <span className="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-800">{s}</span>
     },
   },
   {

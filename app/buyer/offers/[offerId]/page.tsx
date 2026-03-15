@@ -10,6 +10,7 @@ import { StatusPill } from "@/components/dashboard/status-pill"
 import { LoadingSkeleton } from "@/components/dashboard/loading-skeleton"
 import { ErrorState } from "@/components/dashboard/error-state"
 import { EmptyState } from "@/components/dashboard/empty-state"
+import { VehiclePriceBlock, VehicleDealHighlight } from "@/components/vehicles"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Building2, FileText } from "lucide-react"
 import useSWR from "swr"
@@ -41,6 +42,7 @@ export default function BuyerOfferDetailPage({
   }
 
   const vehicle = auction?.shortlist?.items?.[0]?.inventoryItem?.vehicle
+  const vehicleTitle = [vehicle?.year, vehicle?.make, vehicle?.model].filter(Boolean).join(" ")
 
   if (isLoading) {
     return (
@@ -69,7 +71,7 @@ export default function BuyerOfferDetailPage({
       <div className="space-y-6">
         <PageHeader
           title={`Offer from ${offer.dealer?.name || "Dealer"}`}
-          subtitle={`${vehicle?.year || ""} ${vehicle?.make || ""} ${vehicle?.model || ""}`}
+          subtitle={vehicleTitle || undefined}
           backHref="/buyer/offers"
           backLabel="Back to Offers"
           breadcrumbs={[
@@ -83,11 +85,14 @@ export default function BuyerOfferDetailPage({
             title: "Offer Summary",
             content: (
               <div className="space-y-4">
-                <div className="text-center p-4 bg-[#7ED321]/10 rounded-lg">
-                  <p className="text-sm text-muted-foreground">Total Price</p>
-                  <p className="text-3xl font-bold text-[#7ED321]">
-                    ${(offer.cashOtd || 0).toLocaleString()}
-                  </p>
+                <div className="text-center p-4 bg-muted/30 rounded-xl border border-border/40">
+                  <VehiclePriceBlock
+                    price={offer.cashOtd || 0}
+                    label="Total OTD Price"
+                    size="lg"
+                    verified
+                    className="items-center"
+                  />
                 </div>
                 <KeyValueGrid
                   columns={1}
@@ -106,6 +111,22 @@ export default function BuyerOfferDetailPage({
               label: "Overview",
               content: (
                 <div className="space-y-6">
+                  {/* Vehicle + deal highlight */}
+                  <VehicleDealHighlight
+                    year={vehicle?.year}
+                    make={vehicle?.make}
+                    model={vehicle?.model}
+                    trim={vehicle?.trim}
+                    vin={vehicle?.vin}
+                    mileage={vehicle?.mileage}
+                    otdPrice={offer.cashOtd || 0}
+                    monthlyPayment={offer.monthlyPayment}
+                    status={offer.status}
+                    statusLabel={offer.status}
+                    dealerName={offer.dealer?.name}
+                    dealerLocation={offer.dealer?.city ? `${offer.dealer.city}, ${offer.dealer.state}` : undefined}
+                  />
+
                   <Card>
                     <CardHeader>
                       <CardTitle className="text-base">Deal Terms</CardTitle>
@@ -113,9 +134,9 @@ export default function BuyerOfferDetailPage({
                     <CardContent>
                       <KeyValueGrid
                         items={[
-                          { label: "Cash Price", value: `$${(offer.cashPrice || offer.cashOtd || 0).toLocaleString()}` },
-                          { label: "Out-the-Door Price", value: `$${(offer.cashOtd || 0).toLocaleString()}` },
-                          { label: "Monthly Payment", value: offer.monthlyPayment ? `$${offer.monthlyPayment.toLocaleString()}/mo` : "—" },
+                          { label: "Cash Price", value: <VehiclePriceBlock price={offer.cashPrice || offer.cashOtd || 0} label="Cash Price" size="sm" /> },
+                          { label: "Out-the-Door Price", value: <VehiclePriceBlock price={offer.cashOtd || 0} label="OTD" size="sm" verified /> },
+                          { label: "Monthly Payment", value: offer.monthlyPayment ? <VehiclePriceBlock price={offer.monthlyPayment} label="Monthly" size="sm" /> : "—" },
                           { label: "Term", value: offer.term ? `${offer.term} months` : "—" },
                         ]}
                       />
@@ -140,7 +161,6 @@ export default function BuyerOfferDetailPage({
                       items={[
                         { label: "Name", value: offer.dealer?.name || "—" },
                         { label: "Location", value: offer.dealer?.city ? `${offer.dealer.city}, ${offer.dealer.state}` : "—" },
-                        { label: "Rating", value: "4.8/5" },
                       ]}
                     />
                   </CardContent>

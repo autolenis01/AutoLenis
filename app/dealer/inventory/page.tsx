@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { VehicleRow, VehicleEmptyState, VehicleLoadingSkeleton } from "@/components/vehicles"
 import { Package, Plus, Search, MoreVertical, Edit, Trash2, Eye, AlertCircle, Upload, Sparkles, CheckCircle2, XCircle } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { csrfHeaders } from "@/lib/csrf-client"
@@ -101,20 +102,12 @@ export default function DealerInventoryPage() {
     return (
       <div className="space-y-6">
         <div className="flex justify-between items-center">
-          <div className="animate-pulse">
-            <div className="h-8 w-48 bg-muted rounded mb-2" />
-            <div className="h-4 w-64 bg-muted rounded" />
+          <div>
+            <div className="h-9 w-52 bg-muted rounded animate-pulse mb-2" />
+            <div className="h-5 w-36 bg-muted rounded animate-pulse" />
           </div>
         </div>
-        <div className="grid gap-4">
-          {[1, 2, 3].map((i) => (
-            <Card key={i} className="animate-pulse">
-              <CardContent className="p-6">
-                <div className="h-6 w-48 bg-muted rounded" />
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        <VehicleLoadingSkeleton variant="row" count={5} />
       </div>
     )
   }
@@ -232,21 +225,16 @@ export default function DealerInventoryPage() {
         </CardHeader>
         <CardContent>
           {filteredInventory.length === 0 ? (
-            <div className="text-center py-12">
-              <Package className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-              <h3 className="text-lg font-semibold mb-2">
-                {search ? "No vehicles match your search" : "No vehicles in inventory"}
-              </h3>
-              <p className="text-muted-foreground mb-4">
-                {search ? "Try a different search term" : "Add your first vehicle to get started"}
-              </p>
-              {!search && (
-                <Button onClick={() => router.push("/dealer/inventory/add")} variant="outline">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Vehicle
-                </Button>
-              )}
-            </div>
+            <VehicleEmptyState
+              title={search ? "No vehicles match your search" : "No vehicles in inventory"}
+              description={search ? "Try a different search term." : "Add your first vehicle to get started."}
+              icon={<Package className="h-8 w-8 text-muted-foreground/50" />}
+              primaryAction={
+                !search
+                  ? { label: "Add Vehicle", href: "/dealer/inventory/add" }
+                  : undefined
+              }
+            />
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
@@ -262,30 +250,17 @@ export default function DealerInventoryPage() {
                 </thead>
                 <tbody>
                   {filteredInventory.map((item: any) => (
-                    <tr key={item.id} className="border-b hover:bg-muted/50 transition-colors">
-                      <td className="py-4 px-4">
-                        <div className="font-medium">
-                          {item.vehicle.year} {item.vehicle.make} {item.vehicle.model}
-                        </div>
-                        <div className="text-sm text-muted-foreground">{item.vehicle.trim}</div>
-                      </td>
-                      <td className="py-4 px-4 text-sm font-mono text-muted-foreground">{item.vehicle.vin}</td>
-                      <td className="py-4 px-4 text-sm">{item.stockNumber}</td>
-                      <td className="py-4 px-4 font-semibold">${(item.price || 0).toLocaleString()}</td>
-                      <td className="py-4 px-4">
-                        <span
-                          className={`px-3 py-1 rounded-full text-xs font-medium ${
-                            item.status === "AVAILABLE"
-                              ? "bg-[#7ED321]/10 text-[#7ED321]"
-                              : item.status === "PENDING"
-                                ? "bg-yellow-500/10 text-yellow-600"
-                                : "bg-muted text-muted-foreground"
-                          }`}
-                        >
-                          {item.status}
-                        </span>
-                      </td>
-                      <td className="py-4 px-4 text-right">
+                    <VehicleRow
+                      key={item.id}
+                      year={item.vehicle.year}
+                      make={item.vehicle.make}
+                      model={item.vehicle.model}
+                      trim={item.vehicle.trim}
+                      vin={item.vehicle.vin}
+                      stockNumber={item.stockNumber}
+                      price={item.price}
+                      status={item.status}
+                      actions={
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon">
@@ -311,8 +286,8 @@ export default function DealerInventoryPage() {
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
-                      </td>
-                    </tr>
+                      }
+                    />
                   ))}
                 </tbody>
               </table>

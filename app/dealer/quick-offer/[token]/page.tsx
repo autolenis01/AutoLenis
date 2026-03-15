@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-import { Skeleton } from "@/components/ui/skeleton"
+import { VehicleLoadingSkeleton, VehicleEmptyState } from "@/components/vehicles"
 import { AlertCircle, CheckCircle2, Clock, XCircle } from "lucide-react"
 import { csrfHeaders } from "@/lib/csrf-client"
 
@@ -108,10 +108,8 @@ export default function DealerQuickOfferPage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
         <Card className="w-full max-w-lg">
-          <CardContent className="pt-6 space-y-4">
-            <Skeleton className="h-8 w-2/3" />
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-4 w-3/4" />
+          <CardContent className="pt-6">
+            <VehicleLoadingSkeleton variant="compact" count={1} />
           </CardContent>
         </Card>
       </div>

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react"
 import { ProtectedRoute } from "@/components/layout/protected-route"
 import { VehicleCard } from "@/components/buyer/vehicle-card"
+import { VehicleStatusChips, VehicleEmptyState, VehicleLoadingSkeleton, type ChipVariant } from "@/components/vehicles"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -10,7 +11,7 @@ import { useToast } from "@/hooks/use-toast"
 import { extractApiError } from "@/lib/utils/error-message"
 import { useRouter } from "next/navigation"
 import { csrfHeaders } from "@/lib/csrf-client"
-import { Trash2, Gavel, CheckCircle2, AlertCircle, CreditCard, Car, Globe, Shield, Loader2 } from "lucide-react"
+import { Trash2, Gavel, CheckCircle2, AlertCircle, CreditCard, Car } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -158,9 +159,17 @@ export default function BuyerShortlistPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-      </div>
+      <ProtectedRoute allowedRoles={["BUYER"]}>
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div className="space-y-2">
+              <div className="h-9 w-40 bg-muted rounded animate-pulse" />
+              <div className="h-5 w-56 bg-muted rounded animate-pulse" />
+            </div>
+          </div>
+          <VehicleLoadingSkeleton variant="card" count={3} />
+        </div>
+      </ProtectedRoute>
     )
   }
 
@@ -187,16 +196,12 @@ export default function BuyerShortlistPage() {
         </div>
 
         {(!shortlist || shortlist.items.length === 0) && (
-          <Card className="border-dashed">
-            <CardHeader className="text-center">
-              <Car className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <CardTitle>Your shortlist is empty</CardTitle>
-              <CardDescription>Add vehicles from search to start building your shortlist</CardDescription>
-            </CardHeader>
-            <CardContent className="text-center">
-              <Button onClick={() => router.push("/buyer/search")}>Search Vehicles</Button>
-            </CardContent>
-          </Card>
+          <VehicleEmptyState
+            title="Your shortlist is empty"
+            description="Add vehicles from search to start building your shortlist and launch an auction."
+            icon={<Car className="h-8 w-8 text-muted-foreground/50" />}
+            primaryAction={{ label: "Search Vehicles", href: "/buyer/search" }}
+          />
         )}
 
         {shortlist && shortlist.items.length > 0 && (
@@ -283,21 +288,15 @@ export default function BuyerShortlistPage() {
                     />
                     {/* Sourcing / network indicators */}
                     {matchInfo && (
-                      <div className="absolute bottom-16 left-3 flex gap-1">
-                        {matchInfo.networkDealerAvailable && (
-                          <Badge className="bg-green-100 text-green-800 border-green-200 text-xs gap-1">
-                            <Shield className="h-3 w-3" />
-                            Network
-                          </Badge>
-                        )}
-                        {matchInfo.externalSourcingAvailable && (
-                          <Badge className="bg-blue-100 text-blue-800 border-blue-200 text-xs gap-1">
-                            <Globe className="h-3 w-3" />
-                            Sourcing
-                          </Badge>
-                        )}
+                      <div className="absolute bottom-16 left-3">
+                        <VehicleStatusChips
+                          chips={[
+                            ...(matchInfo.networkDealerAvailable ? ["network" as ChipVariant] : []),
+                            ...(matchInfo.externalSourcingAvailable ? ["sourcing" as ChipVariant] : []),
+                          ]}
+                        />
                         {matchInfo.offersReceived > 0 && (
-                          <Badge variant="secondary" className="text-xs">
+                          <Badge variant="secondary" className="text-xs mt-1">
                             {matchInfo.offersReceived} offer{matchInfo.offersReceived !== 1 ? "s" : ""}
                           </Badge>
                         )}

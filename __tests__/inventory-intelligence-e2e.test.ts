@@ -30,10 +30,10 @@ describe("Buyer Dual-Lane Search", () => {
     expect(page).toContain("Availability Unconfirmed")
   })
 
-  it("search page renders TrustBadge and SourceBadge components", () => {
+  it("search page renders canonical vehicle status chips", () => {
     const page = readFile("app/buyer/search/page.tsx")
-    expect(page).toContain("TrustBadge")
-    expect(page).toContain("SourceBadge")
+    expect(page).toContain("VehicleStatusChip")
+    expect(page).toContain("TRUST_CHIP_MAP")
   })
 
   it("search page fetches from dual-lane API", () => {
