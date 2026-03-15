@@ -180,7 +180,7 @@ describe("Flow 4 — $99 deposit payment and canonical billing updates", () => {
   it("buyer-package service has no direct writes to buyer_package_billing", () => {
     const src = readFile("lib/services/buyer-package.service.ts")
     expect(src).not.toMatch(
-      /\.from\(\s*["']buyer_package_billing["']\s*\)\s*\.\s*(insert|update|upsert)/,
+      /\.from\(\s*["']buyer_package_billing["']\s*\)\s*\.\s*(insert|update|upsert|delete)/,
     )
   })
 })
