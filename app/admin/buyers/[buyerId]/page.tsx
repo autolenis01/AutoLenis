@@ -382,11 +382,11 @@ export default function AdminBuyerDetailPage({ params }: { params: Promise<{ buy
                   <div>
                     <dt className="text-sm text-muted-foreground">Package Tier</dt>
                     <dd className="font-medium">
-                      {(profile?.package_tier || profile?.packageTier) === "PREMIUM" ? (
+                      {profile?.package_tier === "PREMIUM" ? (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-800">
                           Premium
                         </span>
-                      ) : (profile?.package_tier || profile?.packageTier) === "STANDARD" ? (
+                      ) : profile?.package_tier === "STANDARD" ? (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-800">
                           Standard
                         </span>
@@ -395,22 +395,22 @@ export default function AdminBuyerDetailPage({ params }: { params: Promise<{ buy
                       )}
                     </dd>
                   </div>
-                  {(profile?.package_selection_source || profile?.packageSelectionSource) && (
+                  {profile?.package_selection_source && (
                     <div>
                       <dt className="text-sm text-muted-foreground">Package Source</dt>
-                      <dd className="font-medium">{profile.package_selection_source || profile.packageSelectionSource}</dd>
+                      <dd className="font-medium">{profile.package_selection_source}</dd>
                     </div>
                   )}
-                  {(profile?.package_selected_at || profile?.packageSelectedAt) && (
+                  {profile?.package_selected_at && (
                     <div>
                       <dt className="text-sm text-muted-foreground">Package Selected At</dt>
-                      <dd className="font-medium">{formatDate(profile.package_selected_at || profile.packageSelectedAt)}</dd>
+                      <dd className="font-medium">{formatDate(profile.package_selected_at)}</dd>
                     </div>
                   )}
-                  {(profile?.package_upgraded_at || profile?.packageUpgradedAt) && (
+                  {profile?.package_upgraded_at && (
                     <div>
                       <dt className="text-sm text-muted-foreground">Package Upgraded At</dt>
-                      <dd className="font-medium">{formatDate(profile.package_upgraded_at || profile.packageUpgradedAt)}</dd>
+                      <dd className="font-medium">{formatDate(profile.package_upgraded_at)}</dd>
                     </div>
                   )}
                   {/* Billing data from canonical buyer_package_billing table */}
@@ -431,7 +431,7 @@ export default function AdminBuyerDetailPage({ params }: { params: Promise<{ buy
                         <dt className="text-sm text-muted-foreground">Deposit Credit Treatment</dt>
                         <dd className="font-medium">{packageBilling.deposit_credit_treatment || "-"}</dd>
                       </div>
-                      {(profile?.package_tier || profile?.packageTier) === "PREMIUM" && (
+                      {profile?.package_tier === "PREMIUM" && (
                         <>
                           <div>
                             <dt className="text-sm text-muted-foreground">Premium Fee Total</dt>
@@ -453,21 +453,10 @@ export default function AdminBuyerDetailPage({ params }: { params: Promise<{ buy
                       )}
                     </>
                   ) : (
-                    /* Fallback to profile snapshot fields if billing table not available */
-                    <>
-                      {(profile?.depositStatus || profile?.deposit_status) && (
-                        <div>
-                          <dt className="text-sm text-muted-foreground">Deposit Status</dt>
-                          <dd className="font-medium">
-                            {(profile.depositStatus || profile.deposit_status) === "PAID" ? (
-                              <span className="text-green-600">{profile.depositStatus || profile.deposit_status}</span>
-                            ) : (
-                              <span className="text-yellow-600">{profile.depositStatus || profile.deposit_status}</span>
-                            )}
-                          </dd>
-                        </div>
-                      )}
-                    </>
+                    <div>
+                      <dt className="text-sm text-muted-foreground">Deposit Status</dt>
+                      <dd className="font-medium text-muted-foreground">No billing data available</dd>
+                    </div>
                   )}
                   <div>
                     <dt className="text-sm text-muted-foreground">Current Workflow Stage</dt>

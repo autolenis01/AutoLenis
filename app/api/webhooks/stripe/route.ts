@@ -6,7 +6,7 @@ import { prisma } from "@/lib/db"
 import { affiliateService } from "@/lib/services/affiliate.service"
 import { logger } from "@/lib/logger"
 import { notifyAdmin } from "@/lib/notifications/notification.service"
-import { markDepositPaid, markDepositFailed, markDepositRefunded } from "@/lib/services/buyer-package.service"
+import { markDepositPaid, markDepositFailed, markDepositRefunded, recordPremiumFeePayment } from "@/lib/services/buyer-package.service"
 import type Stripe from "stripe"
 
 export const dynamic = "force-dynamic"
@@ -257,6 +257,22 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
           metadata: { amount: payment.finalAmount, sessionId: session.id },
           dedupeKey: `service_fee.succeeded.${session.payment_intent}`,
         })
+      }
+
+      // Sync premium fee payment to canonical buyer_package_billing via RPC
+      // This records the concierge fee payment for PREMIUM buyers and updates
+      // the remaining balance in buyer_package_billing.
+      if ((payment.deal as any)?.buyerId) {
+        try {
+          await recordPremiumFeePayment(
+            (payment.deal as any).buyerId,
+            payment.finalAmount || 0,
+            session.payment_intent as string,
+            { sessionId: session.id, dealId: metadata['dealId'] },
+          )
+        } catch (rpcErr) {
+          logger.error("record_premium_fee_payment RPC failed (non-blocking)", rpcErr instanceof Error ? rpcErr : undefined)
+        }
       }
     }
   }

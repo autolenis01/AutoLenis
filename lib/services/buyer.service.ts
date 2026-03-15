@@ -145,7 +145,7 @@ export const buyerService = {
             .order("createdAt", { ascending: false })
             .limit(5),
 
-          // Package billing state (best-effort — table may not exist yet)
+          // Package billing state from canonical buyer_package_billing table
           supabase
             .from("buyer_package_billing")
             .select("*")
