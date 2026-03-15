@@ -59,7 +59,7 @@ export const buyerService = {
 
       const buyerId = flattenedProfile.id
 
-      const [preQualResult, shortlistsResult, auctionsResult, dealsResult, pickupsResult, affiliateResult, vehicleRequestsResult, billingResult] =
+      const [preQualResult, shortlistsResult, auctionsResult, dealsResult, pickupsResult, affiliateResult, vehicleRequestsResult, packageBillingResult] =
         await Promise.all([
           supabase
             .from("PreQualification")
@@ -160,7 +160,7 @@ export const buyerService = {
       const pickups = pickupsResult.data || []
       const referralStats = affiliateResult.data
       const vehicleRequests = vehicleRequestsResult.data || []
-      const billing = billingResult?.data || null
+      const packageBilling = packageBillingResult?.data || null
 
       // Calculate sourcing stats
       const activeSourcingCases = vehicleRequests.filter(
@@ -214,7 +214,7 @@ export const buyerService = {
         pickups: pickups.slice(0, 3),
         recentActivity,
         referralStats,
-        billing,
+        billing: packageBilling,
       }
     } catch (error) {
       console.error("[BuyerService] Error fetching dashboard data:", error)

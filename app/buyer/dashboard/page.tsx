@@ -267,6 +267,7 @@ export default function BuyerDashboardPage() {
   })
   const { user: currentUser } = useUser()
   const [upgrading, setUpgrading] = useState(false)
+  const [upgradeError, setUpgradeError] = useState<string | null>(null)
 
   const profile = data?.profile
   const preQual = data?.preQual
@@ -406,12 +407,18 @@ export default function BuyerDashboardPage() {
                   disabled={upgrading}
                   onClick={async () => {
                     setUpgrading(true)
+                    setUpgradeError(null)
                     try {
                       const res = await fetch("/api/buyer/upgrade", { method: "POST", headers: csrfHeaders({ "Content-Type": "application/json" }), body: JSON.stringify({}) })
                       if (res.ok) {
                         await mutate()
+                      } else {
+                        const body = await res.json().catch(() => null)
+                        setUpgradeError(body?.error || "Upgrade failed. Please try again.")
                       }
-                    } catch { /* ignore */ } finally {
+                    } catch {
+                      setUpgradeError("Unable to process upgrade. Please try again.")
+                    } finally {
                       setUpgrading(false)
                     }
                   }}
@@ -422,6 +429,9 @@ export default function BuyerDashboardPage() {
                     "Upgrade to Premium"
                   )}
                 </Button>
+              )}
+              {upgradeError && (
+                <p className="text-xs text-destructive mt-1">{upgradeError}</p>
               )}
             </CardContent>
           </Card>
