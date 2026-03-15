@@ -1,7 +1,12 @@
-import { NextResponse } from "next/server"
+import { type NextRequest, NextResponse } from "next/server"
 import { InventoryService } from "@/lib/services/inventory.service"
+import { rateLimit, rateLimits } from "@/lib/middleware/rate-limit"
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
+  // Rate limit: 100 requests per minute per IP to prevent scraping
+  const rateLimitResponse = await rateLimit(request, rateLimits.api)
+  if (rateLimitResponse) return rateLimitResponse
+
   try {
     const { searchParams } = new URL(request.url)
 

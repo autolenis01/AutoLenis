@@ -3,6 +3,7 @@ import { getSupabase, isDatabaseConfigured } from "@/lib/db"
 import { emailService } from "@/lib/services/email.service"
 import { logger } from "@/lib/logger"
 import { escapeHtml } from "@/lib/utils/escape-html"
+import { rateLimit } from "@/lib/middleware/rate-limit"
 
 function getNotificationRecipient() {
   return process.env['ADMIN_NOTIFICATION_EMAIL'] || "info@autolenis.com"
@@ -10,6 +11,13 @@ function getNotificationRecipient() {
 
 // Contact form submission handler
 export async function POST(request: NextRequest) {
+  // Rate limit: 5 submissions per 15 minutes per IP to prevent spam
+  const rateLimitResponse = await rateLimit(request, {
+    maxRequests: 5,
+    windowMs: 15 * 60 * 1000,
+  })
+  if (rateLimitResponse) return rateLimitResponse
+
   try {
     const body = await request.json()
 

@@ -3,6 +3,7 @@
 
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
+import { timingSafeEqual } from "node:crypto"
 
 // Vercel Cron IP ranges (as of 2024)
 const VERCEL_CRON_IPS = [
@@ -43,7 +44,12 @@ export async function validateCronRequest(request: NextRequest): Promise<NextRes
     return NextResponse.json({ error: "Service not configured" }, { status: 503 })
   }
 
-  if (authHeader !== `Bearer ${cronSecret}`) {
+  const expected = `Bearer ${cronSecret}`
+  if (
+    !authHeader ||
+    authHeader.length !== expected.length ||
+    !timingSafeEqual(Buffer.from(authHeader), Buffer.from(expected))
+  ) {
     console.warn("[CronSecurity] Invalid cron secret")
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
