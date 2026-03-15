@@ -277,7 +277,11 @@ export class DocuSignService {
   // Private: OAuth2 JWT Grant
   // ---------------------------------------------------------------------------
 
-  private async getAccessToken(): Promise<string> {
+  /**
+   * Get a DocuSign API access token.
+   * Exposed for use by DealerAgreementService for recipient view generation.
+   */
+  async getAccessToken(): Promise<string> {
     const config = getDocuSignConfig()
 
     const url = `${config.oauthBaseUrl}/oauth/token`

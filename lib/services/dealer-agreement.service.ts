@@ -161,7 +161,7 @@ export class DealerAgreementService {
     }
 
     // Generate recipient view URL via DocuSign API
-    const accessToken = await docuSignService["getAccessToken"]()
+    const accessToken = await docuSignService.getAccessToken()
     const url = `${config.baseUrl}/v2.1/accounts/${config.accountId}/envelopes/${agreement.docusignEnvelopeId}/views/recipient`
 
     const response = await fetch(url, {
@@ -240,7 +240,7 @@ export class DealerAgreementService {
         envelopeId,
         eventType,
         eventTime: new Date(eventTime),
-        payload: payload as any,
+        payload: JSON.parse(JSON.stringify(payload)),
       },
       update: {},
     })
@@ -278,11 +278,11 @@ export class DealerAgreementService {
       status: mappedStatus,
       lastWebhookAt: new Date(),
       webhookStatus: eventType,
-      webhookPayload: payload as any,
+      webhookPayload: JSON.parse(JSON.stringify(payload)),
     }
 
     const now = new Date()
-    if (mappedStatus === DealerAgreementStatus.SENT) updateData.sentAt = updateData.sentAt ?? now
+    if (mappedStatus === DealerAgreementStatus.SENT && !agreement.sentAt) updateData.sentAt = now
     if (mappedStatus === DealerAgreementStatus.DELIVERED) updateData.deliveredAt = now
     if (mappedStatus === DealerAgreementStatus.COMPLETED) {
       updateData.completedAt = now
@@ -293,7 +293,7 @@ export class DealerAgreementService {
 
     await prisma.dealerAgreement.update({
       where: { id: agreement.id },
-      data: updateData as any,
+      data: updateData,
     })
 
     // Emit platform event

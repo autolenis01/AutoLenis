@@ -104,6 +104,7 @@ ALTER TABLE "Dealer" ADD COLUMN IF NOT EXISTS "docusignBlocked" BOOLEAN NOT NULL
 -- 5. Storage bucket for dealer agreements
 -- ---------------------------------------------------------------------------
 
+-- file_size_limit: 52428800 bytes = 50 MB max PDF size
 INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 VALUES (
   'dealer-agreements',
