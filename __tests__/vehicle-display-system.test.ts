@@ -54,6 +54,14 @@ describe("Vehicle Display Component System", () => {
       expect(indexContent).toContain('export { VehicleEmptyState }')
     })
 
+    it("exports VehicleComparisonPanel", () => {
+      expect(indexContent).toContain('export { VehicleComparisonPanel }')
+    })
+
+    it("exports VehicleDealHighlight", () => {
+      expect(indexContent).toContain('export { VehicleDealHighlight }')
+    })
+
     it("exports ChipVariant type", () => {
       expect(indexContent).toContain('export type { ChipVariant }')
     })
@@ -362,6 +370,105 @@ describe("Vehicle Display Component System", () => {
       expect(src).toContain("CanonicalVehicleCard")
     })
   })
+
+  // --- VehicleComparisonPanel ---
+  describe("VehicleComparisonPanel", () => {
+    const src = fs.readFileSync(path.join(VEHICLE_DIR, "vehicle-comparison-panel.tsx"), "utf-8")
+
+    it("composes VehicleImageFrame and VehiclePriceBlock", () => {
+      expect(src).toContain("VehicleImageFrame")
+      expect(src).toContain("VehiclePriceBlock")
+    })
+
+    it("composes VehicleSpecsList", () => {
+      expect(src).toContain("VehicleSpecsList")
+    })
+
+    it("supports recommended badge for top option", () => {
+      expect(src).toContain("recommended")
+      expect(src).toContain("Recommended")
+    })
+
+    it("supports score display", () => {
+      expect(src).toContain("score")
+      expect(src).toContain("/100")
+    })
+
+    it("supports financing options badges", () => {
+      expect(src).toContain("financingOptions")
+      expect(src).toContain("APR")
+    })
+
+    it("supports select and decline actions", () => {
+      expect(src).toContain("onSelect")
+      expect(src).toContain("onDecline")
+      expect(src).toContain("Select This Deal")
+      expect(src).toContain("Decline")
+    })
+
+    it("shows dealer context with location and score", () => {
+      expect(src).toContain("dealerName")
+      expect(src).toContain("dealerCity")
+      expect(src).toContain("MapPin")
+      expect(src).toContain("Star")
+    })
+
+    it("returns null when no options", () => {
+      expect(src).toContain("if (options.length === 0) return null")
+    })
+
+    it("uses Card from ui components", () => {
+      expect(src).toContain('from "@/components/ui/card"')
+    })
+  })
+
+  // --- VehicleDealHighlight ---
+  describe("VehicleDealHighlight", () => {
+    const src = fs.readFileSync(path.join(VEHICLE_DIR, "vehicle-deal-highlight.tsx"), "utf-8")
+
+    it("uses premium dark header gradient", () => {
+      expect(src).toContain("bg-gradient-to-br")
+      expect(src).toContain("slate-900")
+    })
+
+    it("shows Selected Deal label", () => {
+      expect(src).toContain("Selected Deal")
+    })
+
+    it("displays vehicle identity with VehicleSpecsList", () => {
+      expect(src).toContain("VehicleSpecsList")
+    })
+
+    it("uses VehiclePriceBlock for pricing", () => {
+      expect(src).toContain("VehiclePriceBlock")
+    })
+
+    it("displays status badge", () => {
+      expect(src).toContain("statusLabel")
+      expect(src).toContain("statusVariant")
+    })
+
+    it("shows dealer context", () => {
+      expect(src).toContain("dealerName")
+      expect(src).toContain("Building2")
+    })
+
+    it("supports next-step CTA", () => {
+      expect(src).toContain("nextStepLabel")
+      expect(src).toContain("nextStepHref")
+      expect(src).toContain("onNextStep")
+      expect(src).toContain("ArrowRight")
+    })
+
+    it("displays VIN and color details", () => {
+      expect(src).toContain("vin")
+      expect(src).toContain("color")
+    })
+
+    it("supports footer slot", () => {
+      expect(src).toContain("footer")
+    })
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -457,6 +564,71 @@ describe("Vehicle display page integration", () => {
 
     it("uses VehiclePriceBlock for offer price display", () => {
       expect(src).toContain("VehiclePriceBlock")
+    })
+  })
+
+  describe("Buyer auction offers page (best price)", () => {
+    const src = fs.readFileSync(path.resolve("app/buyer/auction/[id]/offers/page.tsx"), "utf-8")
+
+    it("imports canonical vehicle components", () => {
+      expect(src).toContain('from "@/components/vehicles"')
+    })
+
+    it("uses VehicleComparisonPanel for offer comparison", () => {
+      expect(src).toContain("VehicleComparisonPanel")
+    })
+
+    it("uses VehicleEmptyState for no-offers state", () => {
+      expect(src).toContain("VehicleEmptyState")
+    })
+
+    it("uses VehicleLoadingSkeleton for loading state", () => {
+      expect(src).toContain("VehicleLoadingSkeleton")
+    })
+
+    it("wraps in ProtectedRoute", () => {
+      expect(src).toContain("ProtectedRoute")
+      expect(src).toContain("BUYER")
+    })
+  })
+
+  describe("Buyer offer detail page", () => {
+    const src = fs.readFileSync(path.resolve("app/buyer/offers/[offerId]/page.tsx"), "utf-8")
+
+    it("uses VehiclePriceBlock for price display", () => {
+      expect(src).toContain("VehiclePriceBlock")
+    })
+
+    it("imports from canonical vehicle components", () => {
+      expect(src).toContain('from "@/components/vehicles"')
+    })
+  })
+
+  describe("Buyer deal insurance page", () => {
+    const src = fs.readFileSync(path.resolve("app/buyer/deal/insurance/page.tsx"), "utf-8")
+
+    it("uses VehicleCardCompact for vehicle context", () => {
+      expect(src).toContain("VehicleCardCompact")
+    })
+
+    it("uses VehicleLoadingSkeleton for loading state", () => {
+      expect(src).toContain("VehicleLoadingSkeleton")
+    })
+
+    it("imports from canonical vehicle components", () => {
+      expect(src).toContain('from "@/components/vehicles"')
+    })
+  })
+
+  describe("Dealer quick-offer page", () => {
+    const src = fs.readFileSync(path.resolve("app/dealer/quick-offer/[token]/page.tsx"), "utf-8")
+
+    it("uses VehicleLoadingSkeleton for loading state", () => {
+      expect(src).toContain("VehicleLoadingSkeleton")
+    })
+
+    it("imports from canonical vehicle components", () => {
+      expect(src).toContain('from "@/components/vehicles"')
     })
   })
 })
