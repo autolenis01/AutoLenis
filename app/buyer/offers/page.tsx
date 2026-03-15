@@ -6,11 +6,12 @@ import { EmptyState } from "@/components/dashboard/empty-state"
 import { LoadingSkeleton } from "@/components/dashboard/loading-skeleton"
 import { ErrorState } from "@/components/dashboard/error-state"
 import { StatusPill } from "@/components/dashboard/status-pill"
+import { VehiclePriceBlock } from "@/components/vehicles"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Gavel, Search, Building2, DollarSign, ArrowRight, Shield, Clock, EyeOff } from "lucide-react"
+import { Gavel, Search, Building2, ArrowRight, Shield, Clock, EyeOff } from "lucide-react"
 import Link from "next/link"
 import useSWR from "swr"
 
@@ -116,12 +117,11 @@ export default function BuyerOffersPage() {
                         </div>
                       )}
 
-                      <div className="flex items-center gap-2">
-                        <DollarSign className="h-5 w-5 text-[#7ED321]" />
-                        <span className="text-2xl font-bold text-[#7ED321]">
-                          {(offer.cashOtd || 0).toLocaleString()}
-                        </span>
-                      </div>
+                      <VehiclePriceBlock
+                        price={offer.cashOtd || 0}
+                        label="OTD Price"
+                        size="md"
+                      />
 
                       <Button variant="outline" size="sm" className="w-full bg-transparent" asChild>
                         <Link href={`/buyer/offers/${offer.id}`}>
