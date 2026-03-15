@@ -32,13 +32,11 @@ export default defineConfig({
   ],
 
   /* Skip local dev server when testing against an external deployment */
-  ...(process.env.SMOKE_BASE_URL
-    ? {}
+  webServer: process.env.SMOKE_BASE_URL
+    ? undefined
     : {
-        webServer: {
-          command: "pnpm dev",
-          url: "http://localhost:3000",
-          reuseExistingServer: !process.env['CI'],
-        },
-      }),
+        command: "pnpm dev",
+        url: "http://localhost:3000",
+        reuseExistingServer: !process.env['CI'],
+      },
 })
