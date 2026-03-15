@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { usePathname } from "next/navigation"
@@ -267,15 +267,43 @@ export function AffiliateLayoutClient({
   userEmail: string
   portalLinks?: PortalLink[]
 }) {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  // Store the pathname at which the menu was opened; menu is "open" only on that pathname.
+  // This avoids a useEffect to close the menu on navigation.
+  const [menuOpenPathname, setMenuOpenPathname] = useState<string | null>(null)
   const [isLoggingOut, setIsLoggingOut] = useState(false)
-  const [expandedItems, setExpandedItems] = useState<string[]>([])
   const pathname = usePathname()
 
-  // Close mobile menu on navigation
-  useEffect(() => {
-    setMobileMenuOpen(false)
-  }, [pathname])
+  const mobileMenuOpen = menuOpenPathname === pathname
+
+  // Compute which parent items contain the active route — reacts to both pathname and nav changes.
+  const autoExpandedItems = useMemo(() => {
+    const items: string[] = []
+    nav.forEach((section) => {
+      section.items.forEach((item) => {
+        if (item.subItems?.some(
+          (sub) => pathname === sub.href || pathname.startsWith(sub.href + "/"),
+        )) {
+          items.push(item.href)
+        }
+      })
+    })
+    return items
+  }, [pathname, nav])
+
+  // Auto-expand the section containing the active sub-item.
+  // Uses "setState during render" pattern (React docs: storing info from previous renders)
+  // to avoid calling setState inside a useEffect, which would cause cascading renders.
+  // useMemo returns a stable reference when neither pathname nor nav changes, so this
+  // conditional only fires when the active section actually changes.
+  const [expandedItems, setExpandedItems] = useState<string[]>(autoExpandedItems)
+  const [lastAutoExpandedItems, setLastAutoExpandedItems] = useState(autoExpandedItems)
+  if (lastAutoExpandedItems !== autoExpandedItems) {
+    setLastAutoExpandedItems(autoExpandedItems)
+    setExpandedItems((prev) => {
+      const toAdd = autoExpandedItems.filter((item) => !prev.includes(item))
+      return toAdd.length > 0 ? [...prev, ...toAdd] : prev
+    })
+  }
 
   // Lock body scroll when mobile menu is open
   useEffect(() => {
@@ -288,26 +316,6 @@ export function AffiliateLayoutClient({
       document.body.style.overflow = ""
     }
   }, [mobileMenuOpen])
-
-  // Auto-expand the section containing the active sub-item
-  useEffect(() => {
-    setExpandedItems((prev) => {
-      const toAdd: string[] = []
-      nav.forEach((section) => {
-        section.items.forEach((item) => {
-          if (item.subItems) {
-            const hasActiveChild = item.subItems.some(
-              (sub) => pathname === sub.href || pathname.startsWith(sub.href + "/"),
-            )
-            if (hasActiveChild && !prev.includes(item.href)) {
-              toAdd.push(item.href)
-            }
-          }
-        })
-      })
-      return toAdd.length > 0 ? [...prev, ...toAdd] : prev
-    })
-  }, [pathname, nav])
 
   const handleLogout = async () => {
     if (isLoggingOut) return
@@ -330,7 +338,7 @@ export function AffiliateLayoutClient({
     )
   }, [])
 
-  const closeMobileMenu = useCallback(() => setMobileMenuOpen(false), [])
+  const closeMobileMenu = useCallback(() => setMenuOpenPathname(null), [])
 
   return (
     <div className="min-h-screen bg-background">
@@ -345,7 +353,7 @@ export function AffiliateLayoutClient({
             <div className="flex items-center gap-3">
               <button
                 type="button"
-                onClick={() => setMobileMenuOpen(true)}
+                onClick={() => setMenuOpenPathname(pathname)}
                 className="lg:hidden p-2 -ml-2 hover:bg-white/10 rounded-lg transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center focus-ring"
                 aria-label="Open navigation menu"
                 aria-expanded={mobileMenuOpen}
