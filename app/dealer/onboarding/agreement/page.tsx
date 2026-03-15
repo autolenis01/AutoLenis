@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Loader2, FileSignature, CheckCircle2, AlertCircle, Clock, RefreshCw } from "lucide-react"
+import { csrfHeaders } from "@/lib/csrf-client"
 
 interface AgreementState {
   agreement: {
@@ -76,7 +77,7 @@ export default function DealerAgreementPage() {
     try {
       const res = await fetch("/api/dealer/onboarding/agreement/send", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { ...csrfHeaders(), "Content-Type": "application/json" },
         body: JSON.stringify({ dealerId }),
       })
       if (!res.ok) {
@@ -99,7 +100,7 @@ export default function DealerAgreementPage() {
       const returnUrl = `${window.location.origin}/dealer/onboarding/agreement/success`
       const res = await fetch("/api/dealer/onboarding/agreement/view", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { ...csrfHeaders(), "Content-Type": "application/json" },
         body: JSON.stringify({
           agreementId: agreementState.agreement.id,
           returnUrl,
