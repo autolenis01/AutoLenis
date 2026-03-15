@@ -18,9 +18,9 @@ The platform uses Supabase PostgreSQL. You need to set the following variables:
 \`\`\`bash
 # Supabase shared connection pooler (Settings → Database → Connection string → URI)
 # Pooled connection (port 6543, via PgBouncer) — used by Prisma for queries
-DATABASE_URL="postgresql://postgres.vpwnjibcrqujclqalkgy:[YOUR-PASSWORD]@aws-1-us-east-1.pooler.supabase.com:6543/postgres?pgbouncer=true"
+DATABASE_URL="postgresql://postgres.[YOUR-PROJECT-REF]:[YOUR-PASSWORD]@aws-1-us-east-1.pooler.supabase.com:6543/postgres?pgbouncer=true"
 # Direct connection (port 5432) — used by Prisma for migrations
-DIRECT_URL="postgresql://postgres.vpwnjibcrqujclqalkgy:[YOUR-PASSWORD]@aws-1-us-east-1.pooler.supabase.com:5432/postgres"
+DIRECT_URL="postgresql://postgres.[YOUR-PROJECT-REF]:[YOUR-PASSWORD]@aws-1-us-east-1.pooler.supabase.com:5432/postgres"
 \`\`\`
 
 **How to get these:**
