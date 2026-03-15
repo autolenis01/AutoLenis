@@ -17,13 +17,14 @@ import dns from "node:dns/promises"
  */
 
 const BASE = process.env.SMOKE_BASE_URL ?? "http://localhost:3000"
+const TEST_BASE = process.env.SMOKE_TEST_BASE_URL ?? BASE
 
 // Pre-check: resolve target hostname before running tests
 let targetReachable: boolean | null = null
 async function checkTargetReachable(): Promise<boolean> {
   if (targetReachable !== null) return targetReachable
   try {
-    const hostname = new URL(BASE).hostname
+    const hostname = new URL(TEST_BASE).hostname
     if (hostname === "localhost" || hostname === "127.0.0.1") {
       targetReachable = true
       return true
@@ -40,7 +41,7 @@ function skipIfUnreachable() {
   test.beforeEach(async () => {
     const reachable = await checkTargetReachable()
     if (!reachable) {
-      test.skip(true, `Target ${BASE} is not reachable — DNS lookup failed`)
+      test.skip(true, `Target ${TEST_BASE} is not reachable — DNS lookup failed`)
     }
   })
 }
@@ -50,17 +51,17 @@ test.describe("Staging Smoke — Deployment Health", () => {
   skipIfUnreachable()
 
   test("health endpoint responds", async ({ request }) => {
-    const response = await request.get(`${BASE}/api/health`)
+    const response = await request.get(`${TEST_BASE}/api/health`)
     expect(response.status()).toBeLessThan(500)
   })
 
   test("auth health endpoint responds", async ({ request }) => {
-    const response = await request.get(`${BASE}/api/auth/health`)
+    const response = await request.get(`${TEST_BASE}/api/auth/health`)
     expect(response.status()).toBeLessThan(500)
   })
 
   test("home page renders", async ({ page }) => {
-    const response = await page.goto(BASE, {
+    const response = await page.goto(TEST_BASE, {
       waitUntil: "domcontentloaded",
       timeout: 15_000,
     })
@@ -70,7 +71,7 @@ test.describe("Staging Smoke — Deployment Health", () => {
   })
 
   test("signup page renders", async ({ page }) => {
-    const response = await page.goto(`${BASE}/auth/signup`, {
+    const response = await page.goto(`${TEST_BASE}/auth/signup`, {
       waitUntil: "domcontentloaded",
       timeout: 15_000,
     })
@@ -78,7 +79,7 @@ test.describe("Staging Smoke — Deployment Health", () => {
   })
 
   test("pricing page renders", async ({ page }) => {
-    const response = await page.goto(`${BASE}/pricing`, {
+    const response = await page.goto(`${TEST_BASE}/pricing`, {
       waitUntil: "domcontentloaded",
       timeout: 15_000,
     })
@@ -86,14 +87,14 @@ test.describe("Staging Smoke — Deployment Health", () => {
   })
 
   test("API routes return structured errors for unauthenticated requests", async ({ request }) => {
-    const response = await request.get(`${BASE}/api/admin/buyers`)
+    const response = await request.get(`${TEST_BASE}/api/admin/buyers`)
     expect([401, 403]).toContain(response.status())
     const body = await response.json()
     expect(body).toHaveProperty("error")
   })
 
   test("Stripe webhook rejects unsigned requests", async ({ request }) => {
-    const response = await request.post(`${BASE}/api/webhooks/stripe`, {
+    const response = await request.post(`${TEST_BASE}/api/webhooks/stripe`, {
       data: JSON.stringify({ type: "test" }),
       headers: { "Content-Type": "application/json" },
     })

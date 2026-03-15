@@ -133,7 +133,16 @@ jobs:
             const host = new URL(process.env.SMOKE_BASE_URL).hostname;
             dns.lookup(host)
               .then(r => { console.log('✓ DNS resolved:', host, '→', r.address); process.exit(0); })
-              .catch(e => { console.error('✗ DNS failed for', host, ':', e.code); console.error('Add a CNAME record: staging → cname.vercel-dns.com'); console.error('Or use a Vercel preview URL instead: staging_url=https://<project>-<hash>.vercel.app'); process.exit(1); });
+              .catch(e => {
+                console.error('✗ DNS failed for', host, ':', e.code);
+                if (host.endsWith('.autolenis.com')) {
+                  console.error('Add a CNAME record: ' + host.split('.')[0] + ' → cname.vercel-dns.com');
+                  console.error('Or use a Vercel preview URL instead: staging_url=https://<project>-<hash>.vercel.app');
+                } else {
+                  console.error('The hostname', host, 'could not be resolved. Verify the URL is correct.');
+                }
+                process.exit(1);
+              });
           "
 
       - name: "Health pre-check: verify deployment responds"
