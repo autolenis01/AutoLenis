@@ -80,11 +80,13 @@ curl -i https://your-app.vercel.app/api/health
 
 ### DNS Setup
 
-Add a CNAME record at your DNS provider:
+Add a CNAME record at your DNS provider (use the target provided by Vercel when adding the domain):
 
-| Record Type | Name      | Value                   |
-|-------------|-----------|-------------------------|
-| CNAME       | `staging` | `cname.vercel-dns.com.` |
+| Record Type | Name      | Value                                   | Status |
+|-------------|-----------|---------------------------------------- |--------|
+| CNAME       | `staging` | `90ee6f36f7268215.vercel-dns-016.com.`  | ✅ Live |
+
+> Vercel assigns a project-specific DNS target when you add a domain. Use the exact value shown in the Vercel dashboard under **Project Settings → Domains**.
 
 If using **Cloudflare**, set proxy status to **"DNS only"** (grey cloud) until verified.
 

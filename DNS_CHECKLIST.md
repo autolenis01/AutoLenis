@@ -47,15 +47,17 @@ Once DNS is configured, set `ADMIN_SUBDOMAIN_ENABLED=true` to redirect `/admin` 
 |-------------|---------|--------------------------|
 | CNAME       | `admin` | `cname.vercel-dns.com.`  |
 
-### For `staging.autolenis.com`
+### For `staging.autolenis.com` ✅ DNS Configured
 
-| Record Type | Name      | Value                    |
-|-------------|-----------|--------------------------|
-| CNAME       | `staging` | `cname.vercel-dns.com.`  |
+| Record Type | Name      | Value                                    | Status |
+|-------------|-----------|------------------------------------------|--------|
+| CNAME       | `staging` | `90ee6f36f7268215.vercel-dns-016.com.`   | ✅ Live |
+
+> **Note**: Vercel assigns a project-specific DNS target (e.g. `90ee6f36f7268215.vercel-dns-016.com`) when you add a domain in the Vercel dashboard. This is the correct CNAME value — not the generic `cname.vercel-dns.com`.
 
 **For both subdomains:**
 
-- **Preferred**: CNAME → `cname.vercel-dns.com`
+- Use the CNAME target provided by Vercel when adding the domain in **Project Settings → Domains**.
 - Ensure no conflicting A or CNAME records exist for the subdomain.
 - If using **Cloudflare**: set the proxy status to **"DNS only"** (grey cloud) while validating, then enable proxy after verification if desired.
 
@@ -114,7 +116,7 @@ The CI job includes DNS pre-check and deployment health verification with retry 
 
 | Scenario | URL to use |
 |----------|-----------|
-| DNS configured | `https://staging.autolenis.com` |
+| DNS configured ✅ | `https://staging.autolenis.com` |
 | DNS not configured (NXDOMAIN) | Vercel preview URL from PR deployment |
 | Local development | `http://localhost:3000` (default, no SMOKE_BASE_URL needed) |
 

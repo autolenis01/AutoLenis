@@ -136,7 +136,8 @@ jobs:
               .catch(e => {
                 console.error('✗ DNS failed for', host, ':', e.code);
                 if (host.endsWith('.autolenis.com')) {
-                  console.error('Add a CNAME record: ' + host.split('.')[0] + ' → cname.vercel-dns.com');
+                  console.error('Verify the CNAME record exists: ' + host.split('.')[0] + ' → <vercel-assigned-target>.vercel-dns-016.com');
+                  console.error('Check Vercel dashboard → Project Settings → Domains for the exact CNAME target.');
                   console.error('Or use a Vercel preview URL instead: staging_url=https://<project>-<hash>.vercel.app');
                 } else {
                   console.error('The hostname', host, 'could not be resolved. Verify the URL is correct.');
