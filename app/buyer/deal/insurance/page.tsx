@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { ProtectedRoute } from "@/components/layout/protected-route"
+import { VehicleCardCompact, VehicleLoadingSkeleton } from "@/components/vehicles"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -44,9 +45,16 @@ export default function DealInsuranceOverviewPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-      </div>
+      <ProtectedRoute allowedRoles={["BUYER"]}>
+        <div className="max-w-4xl w-full mx-auto space-y-6 p-4">
+          <div>
+            <div className="h-9 w-40 bg-muted rounded animate-pulse mb-2" />
+            <div className="h-5 w-72 bg-muted rounded animate-pulse" />
+          </div>
+          <VehicleLoadingSkeleton variant="compact" count={1} />
+          <div className="h-40 bg-muted rounded-xl animate-pulse" />
+        </div>
+      </ProtectedRoute>
     )
   }
 
@@ -62,6 +70,19 @@ export default function DealInsuranceOverviewPage() {
             Upload proof of insurance coverage for your vehicle purchase.
           </p>
         </div>
+
+        {/* Vehicle Context */}
+        {deal?.vehicle && (
+          <VehicleCardCompact
+            year={deal.vehicle.year}
+            make={deal.vehicle.make}
+            model={deal.vehicle.model}
+            trim={deal.vehicle.trim}
+            mileage={deal.vehicle.mileage}
+            price={deal.cashOtd || deal.otdPrice}
+            priceLabel="Deal OTD"
+          />
+        )}
 
         {/* Status Badge */}
         <Card>

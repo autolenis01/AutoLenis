@@ -6,6 +6,8 @@ export { VehiclePriceBlock } from "./vehicle-price-block"
 export { VehicleSpecsList } from "./vehicle-specs-list"
 export { VehicleStatusChips, VehicleStatusChip } from "./vehicle-status-chips"
 export { VehicleSummaryPanel } from "./vehicle-summary-panel"
+export { VehicleComparisonPanel } from "./vehicle-comparison-panel"
+export { VehicleDealHighlight } from "./vehicle-deal-highlight"
 export { VehicleLoadingSkeleton } from "./vehicle-loading-skeleton"
 export { VehicleEmptyState } from "./vehicle-empty-state"
 

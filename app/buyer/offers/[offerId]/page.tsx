@@ -10,11 +10,19 @@ import { StatusPill } from "@/components/dashboard/status-pill"
 import { LoadingSkeleton } from "@/components/dashboard/loading-skeleton"
 import { ErrorState } from "@/components/dashboard/error-state"
 import { EmptyState } from "@/components/dashboard/empty-state"
+import { VehiclePriceBlock } from "@/components/vehicles"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Building2, FileText } from "lucide-react"
 import useSWR from "swr"
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json())
+
+const formatCurrency = (amount: number) =>
+  new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  }).format(amount)
 
 export default function BuyerOfferDetailPage({
   params,
@@ -83,11 +91,14 @@ export default function BuyerOfferDetailPage({
             title: "Offer Summary",
             content: (
               <div className="space-y-4">
-                <div className="text-center p-4 bg-[#7ED321]/10 rounded-lg">
-                  <p className="text-sm text-muted-foreground">Total Price</p>
-                  <p className="text-3xl font-bold text-[#7ED321]">
-                    ${(offer.cashOtd || 0).toLocaleString()}
-                  </p>
+                <div className="text-center p-4 bg-muted/30 rounded-xl border border-border/40">
+                  <VehiclePriceBlock
+                    price={offer.cashOtd || 0}
+                    label="Total OTD Price"
+                    size="lg"
+                    verified
+                    className="items-center"
+                  />
                 </div>
                 <KeyValueGrid
                   columns={1}
@@ -113,9 +124,9 @@ export default function BuyerOfferDetailPage({
                     <CardContent>
                       <KeyValueGrid
                         items={[
-                          { label: "Cash Price", value: `$${(offer.cashPrice || offer.cashOtd || 0).toLocaleString()}` },
-                          { label: "Out-the-Door Price", value: `$${(offer.cashOtd || 0).toLocaleString()}` },
-                          { label: "Monthly Payment", value: offer.monthlyPayment ? `$${offer.monthlyPayment.toLocaleString()}/mo` : "—" },
+                          { label: "Cash Price", value: formatCurrency(offer.cashPrice || offer.cashOtd || 0) },
+                          { label: "Out-the-Door Price", value: formatCurrency(offer.cashOtd || 0) },
+                          { label: "Monthly Payment", value: offer.monthlyPayment ? `${formatCurrency(offer.monthlyPayment)}/mo` : "—" },
                           { label: "Term", value: offer.term ? `${offer.term} months` : "—" },
                         ]}
                       />
@@ -140,7 +151,6 @@ export default function BuyerOfferDetailPage({
                       items={[
                         { label: "Name", value: offer.dealer?.name || "—" },
                         { label: "Location", value: offer.dealer?.city ? `${offer.dealer.city}, ${offer.dealer.state}` : "—" },
-                        { label: "Rating", value: "4.8/5" },
                       ]}
                     />
                   </CardContent>
