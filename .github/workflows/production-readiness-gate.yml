@@ -133,8 +133,24 @@ jobs:
             const host = new URL(process.env.SMOKE_BASE_URL).hostname;
             dns.lookup(host)
               .then(r => { console.log('✓ DNS resolved:', host, '→', r.address); process.exit(0); })
-              .catch(e => { console.error('✗ DNS failed for', host, ':', e.code); console.error('Add a CNAME record: staging → cname.vercel-dns.com'); process.exit(1); });
+              .catch(e => { console.error('✗ DNS failed for', host, ':', e.code); console.error('Add a CNAME record: staging → cname.vercel-dns.com'); console.error('Or use a Vercel preview URL instead: staging_url=https://<project>-<hash>.vercel.app'); process.exit(1); });
           "
+
+      - name: "Health pre-check: verify deployment responds"
+        run: |
+          URL="${SMOKE_BASE_URL}/api/health"
+          echo "Checking deployment health at: $URL"
+          for i in 1 2 3 4 5; do
+            STATUS=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$URL" 2>/dev/null || echo "000")
+            if [ "$STATUS" -lt 500 ] && [ "$STATUS" != "000" ]; then
+              echo "✓ Deployment is healthy (HTTP $STATUS)"
+              exit 0
+            fi
+            echo "Attempt $i/5: HTTP $STATUS — retrying in 10s..."
+            sleep 10
+          done
+          echo "✗ Deployment at $SMOKE_BASE_URL did not respond after 5 attempts"
+          exit 1
 
       - name: "Run buyer package staging UAT"
         run: pnpm exec playwright test e2e/buyer-package-uat.spec.ts --project=chromium --reporter=list

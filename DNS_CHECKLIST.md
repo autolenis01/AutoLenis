@@ -1,6 +1,32 @@
-# DNS Checklist for AutoLenis Subdomains
+# DNS & Staging Deployment Checklist
 
-## Problem
+## Overview
+
+AutoLenis supports two staging/preview strategies:
+
+1. **Custom domain**: `staging.autolenis.com` — requires DNS CNAME configuration
+2. **Vercel preview URLs**: Auto-generated per deployment (e.g. `auto-lenis-<hash>.vercel.app`) — works immediately
+
+If `staging.autolenis.com` is not yet configured in DNS, **use Vercel preview URLs** for UAT.
+
+## Vercel Preview URL (Recommended Fallback)
+
+Every Vercel deployment gets a unique preview URL that is immediately reachable.
+Find it in the Vercel dashboard under **Deployments** or in the GitHub PR deployment status.
+
+```bash
+# Run UAT against a Vercel preview deployment
+SMOKE_BASE_URL=https://auto-lenis-<hash>.vercel.app pnpm test:e2e e2e/buyer-package-uat.spec.ts --project=chromium
+
+# Run staging smoke test
+SMOKE_BASE_URL=https://auto-lenis-<hash>.vercel.app pnpm test:e2e e2e/staging-smoke.spec.ts --project=chromium
+```
+
+No DNS configuration required — Vercel preview URLs resolve immediately.
+
+## Custom Domain: staging.autolenis.com
+
+### Problem
 
 `admin.autolenis.com` and `staging.autolenis.com` return **NXDOMAIN** in the browser. This is a DNS-side issue — **code cannot fix this**. Each domain must be configured at the DNS provider and in the Vercel dashboard.
 
@@ -54,21 +80,43 @@ Set these in Vercel → Project Settings → Environment Variables for the **Pre
 
 ## Staging UAT (Buyer Package)
 
-Once `staging.autolenis.com` is DNS-reachable, run the buyer package UAT:
+Once `staging.autolenis.com` is DNS-reachable (or using a Vercel preview URL), run the UAT:
 
 ```bash
+# Against staging.autolenis.com (once DNS is configured)
 SMOKE_BASE_URL=https://staging.autolenis.com pnpm test:e2e e2e/buyer-package-uat.spec.ts --project=chromium
-```
 
-### Alternative: Use a Vercel Preview URL
-
-If `staging.autolenis.com` is not yet configured, you can run UAT against any Vercel preview deployment URL:
-
-```bash
+# Against any Vercel preview URL (works immediately)
 SMOKE_BASE_URL=https://auto-lenis-<hash>.vercel.app pnpm test:e2e e2e/buyer-package-uat.spec.ts --project=chromium
 ```
 
-Find the preview URL in the Vercel dashboard under **Deployments** or in the GitHub PR deployment status.
+### Quick Smoke Test
+
+Run the lightweight staging smoke test before the full buyer package UAT:
+
+```bash
+SMOKE_BASE_URL=https://auto-lenis-<hash>.vercel.app pnpm test:e2e e2e/staging-smoke.spec.ts --project=chromium
+```
+
+This verifies deployment health, page rendering, and API error contracts without exercising the full buyer package flows.
+
+### CI: Manual Staging UAT
+
+Trigger the staging UAT from GitHub Actions:
+
+1. Go to **Actions → Production Readiness Gate → Run workflow**
+2. Set `run_staging_uat` to `true`
+3. Set `staging_url` to the target URL (staging domain or Vercel preview URL)
+
+The CI job includes DNS pre-check and deployment health verification with retry logic.
+
+### Which URL to Use
+
+| Scenario | URL to use |
+|----------|-----------|
+| DNS configured | `https://staging.autolenis.com` |
+| DNS not configured (NXDOMAIN) | Vercel preview URL from PR deployment |
+| Local development | `http://localhost:3000` (default, no SMOKE_BASE_URL needed) |
 
 ## Verification Commands
 
