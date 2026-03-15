@@ -21,9 +21,9 @@ const nextConfig = {
     // without requiring NEXT_PUBLIC_APP_URL to be set for every preview environment.
     let appUrl = process.env.NEXT_PUBLIC_APP_URL
     if (!appUrl && process.env.VERCEL_URL) {
-      // Only trust VERCEL_URL for known project deployments (not arbitrary forks)
+      // Only trust VERCEL_URL for this project's own deployments
       const vercelUrl = process.env.VERCEL_URL
-      if (vercelUrl.includes('auto-lenis') || vercelUrl.endsWith('.vercel.app')) {
+      if (vercelUrl.startsWith('auto-lenis-') && vercelUrl.endsWith('.vercel.app')) {
         appUrl = `https://${vercelUrl}`
       }
     }
