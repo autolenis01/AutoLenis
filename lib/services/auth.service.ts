@@ -64,7 +64,10 @@ export class AuthService {
 
       // Create role-specific profile record — errors must fail loudly
       if (input.role === "BUYER") {
-        const tier = (input.packageTier === "PREMIUM" ? BuyerPackageTier.PREMIUM : BuyerPackageTier.STANDARD)
+        if (!input.packageTier || (input.packageTier !== "STANDARD" && input.packageTier !== "PREMIUM")) {
+          throw new Error("Package tier is required for buyer registration")
+        }
+        const tier = input.packageTier as BuyerPackageTier
         const billing = buildBillingInit(tier)
 
         const { error: profileError } = await supabase.from("BuyerProfile").insert({
@@ -222,7 +225,7 @@ export class AuthService {
           role: user.role,
           firstName: input.firstName,
           lastName: input.lastName,
-          packageTier: input.role === "BUYER" ? (input.packageTier || "STANDARD") : undefined,
+          packageTier: input.role === "BUYER" ? input.packageTier : undefined,
         },
         token,
         referral,
