@@ -599,8 +599,16 @@ describe("Vehicle display page integration", () => {
       expect(src).toContain("VehiclePriceBlock")
     })
 
+    it("uses VehicleDealHighlight for deal summary", () => {
+      expect(src).toContain("VehicleDealHighlight")
+    })
+
     it("imports from canonical vehicle components", () => {
       expect(src).toContain('from "@/components/vehicles"')
+    })
+
+    it("does not use inline formatCurrency function", () => {
+      expect(src).not.toContain("const formatCurrency")
     })
   })
 
@@ -617,6 +625,36 @@ describe("Vehicle display page integration", () => {
 
     it("imports from canonical vehicle components", () => {
       expect(src).toContain('from "@/components/vehicles"')
+    })
+
+    it("uses filter/join pattern for vehicle identity instead of inline concatenation", () => {
+      expect(src).toContain("filter(Boolean).join")
+    })
+  })
+
+  describe("Admin verified inventory page", () => {
+    const src = fs.readFileSync(path.resolve("app/admin/inventory/verified/page.tsx"), "utf-8")
+
+    it("imports VehicleStatusChip from canonical vehicle components", () => {
+      expect(src).toContain('VehicleStatusChip')
+      expect(src).toContain('from "@/components/vehicles"')
+    })
+
+    it("uses VehicleStatusChip for status display", () => {
+      expect(src).toContain("VehicleStatusChip")
+    })
+  })
+
+  describe("Admin market inventory page", () => {
+    const src = fs.readFileSync(path.resolve("app/admin/inventory/market/page.tsx"), "utf-8")
+
+    it("imports VehicleStatusChip from canonical vehicle components", () => {
+      expect(src).toContain('VehicleStatusChip')
+      expect(src).toContain('from "@/components/vehicles"')
+    })
+
+    it("uses VehicleStatusChip for status display", () => {
+      expect(src).toContain("VehicleStatusChip")
     })
   })
 

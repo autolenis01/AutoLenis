@@ -6,7 +6,9 @@ import type { AdminListColumn } from "@/components/admin/admin-list-page-shell"
 import { useAdminList } from "@/hooks/use-admin-list"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { Shield, Car, CheckCircle2 } from "lucide-react"
+import { VehicleStatusChip } from "@/components/vehicles"
+import type { ChipVariant } from "@/components/vehicles"
+import { Shield, CheckCircle2 } from "lucide-react"
 
 const formatCurrency = (cents: number) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(cents / 100)
@@ -46,13 +48,14 @@ const columns: AdminListColumn[] = [
     key: "status",
     render: (item: any) => {
       const s = (item.verificationStatus || item.status || "pending").toLowerCase()
-      const colors: Record<string, string> = {
-        verified: "bg-green-100 text-green-800",
-        pending: "bg-yellow-100 text-yellow-800",
-        rejected: "bg-red-100 text-red-800",
-        stale: "bg-gray-100 text-gray-800",
+      const chipMap: Record<string, ChipVariant> = {
+        verified: "verified",
+        pending: "pending",
+        stale: "stale",
       }
-      return <span className={`px-2 py-1 text-xs font-medium rounded-full ${colors[s] || "bg-gray-100 text-gray-800"}`}>{s}</span>
+      const variant = chipMap[s]
+      if (variant) return <VehicleStatusChip variant={variant} />
+      return <span className="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-800">{s}</span>
     },
   },
   {

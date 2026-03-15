@@ -98,7 +98,7 @@ export default function DealInsuranceOverviewPage() {
             </div>
             {deal && (
               <CardDescription>
-                Deal #{deal.id?.slice(0, 8)} &mdash; {deal.vehicle?.year} {deal.vehicle?.make} {deal.vehicle?.model}
+                Deal #{deal.id?.slice(0, 8)} &mdash; {[deal.vehicle?.year, deal.vehicle?.make, deal.vehicle?.model].filter(Boolean).join(" ") || "Vehicle"}
               </CardDescription>
             )}
           </CardHeader>
