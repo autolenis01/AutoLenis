@@ -298,10 +298,44 @@ export async function sendWelcomeEmail(
   email: string,
   firstName: string,
   role?: string,
-  userId?: string
+  userId?: string,
+  packageTier?: string,
 ) {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_BASE_URL || "https://autolenis.com"
   const dashboardUrl = `${appUrl}/buyer/dashboard`
+
+  // Build package-specific copy for buyer emails
+  let packageBlock = ""
+  if (role === "BUYER" && packageTier === "PREMIUM") {
+    packageBlock = `
+      <div style="background: oklch(0.96 0.02 278); border: 1px solid oklch(0.90 0.06 278); border-radius: 10px; padding: 20px; margin: 20px 0;">
+        <h3 style="margin: 0 0 8px; font-size: 16px; font-weight: 700; color: oklch(0.38 0.14 278);">🎉 Premium Concierge Plan</h3>
+        <ul style="margin: 0; padding: 0 0 0 18px; color: oklch(0.42 0.02 260); line-height: 1.8; font-size: 14px;">
+          <li>$99 deposit credited toward your $499 concierge fee</li>
+          <li>$400 remaining after deposit is applied</li>
+          <li>Dedicated buying specialist assigned to your case</li>
+          <li>Financing assistance, contract review &amp; closing coordination</li>
+          <li>Free home delivery</li>
+          <li>Priority support throughout your purchase</li>
+        </ul>
+        <p style="margin: 12px 0 0; color: oklch(0.42 0.02 260); font-size: 14px;"><strong>Next step:</strong> Pay your $99 deposit so we can assign your concierge specialist.</p>
+      </div>
+    `
+  } else if (role === "BUYER") {
+    packageBlock = `
+      <div style="background: oklch(0.97 0.006 260); border: 1px solid oklch(0.90 0.008 260); border-radius: 10px; padding: 20px; margin: 20px 0;">
+        <h3 style="margin: 0 0 8px; font-size: 16px; font-weight: 700; color: oklch(0.13 0.02 260);">Standard / Free Plan</h3>
+        <ul style="margin: 0; padding: 0 0 0 18px; color: oklch(0.42 0.02 260); line-height: 1.8; font-size: 14px;">
+          <li>$99 serious-buyer deposit required to start your auction</li>
+          <li>Deposit credited toward your vehicle purchase at closing</li>
+          <li>Self-serve platform experience</li>
+          <li>Standard support</li>
+        </ul>
+        <p style="margin: 12px 0 0; color: oklch(0.42 0.02 260); font-size: 14px;"><strong>Next step:</strong> Complete pre-qualification, then pay your $99 deposit to start your auction.</p>
+        <p style="margin: 8px 0 0; color: oklch(0.55 0.02 260); font-size: 13px;">Want a dedicated specialist? You can upgrade to Premium at any time.</p>
+      </div>
+    `
+  }
 
   const html = `
     <div style="font-family: system-ui, -apple-system, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
@@ -315,6 +349,8 @@ export async function sendWelcomeEmail(
         <p style="margin: 0 0 16px 0; color: oklch(0.42 0.02 260); line-height: 1.6; font-size: 16px;">
           Your account has been successfully created${role ? ` as a ${role.toLowerCase()}` : ""}. You're now ready to experience car buying the way it should be.
         </p>
+
+        ${packageBlock}
         
         <p style="margin: 0 0 24px 0; color: oklch(0.42 0.02 260); line-height: 1.6; font-size: 16px;">
           Get started by visiting your dashboard to begin your car-buying journey with AutoLenis.
@@ -390,15 +426,17 @@ export async function onUserCreated({
   firstName,
   role,
   referral,
+  packageTier,
 }: {
   userId: string
   email: string
   firstName: string
   role: string
   referral?: { code: string } | null
+  packageTier?: string
 }) {
-  // Send welcome email to the user
-  await sendWelcomeEmail(email, firstName, role, userId)
+  // Send welcome email to the user (package-aware for buyers)
+  await sendWelcomeEmail(email, firstName, role, userId, packageTier)
 
   // Notify admin of new user (optional, can be disabled for high-volume)
   const adminEmail = process.env.ADMIN_NOTIFICATION_EMAIL || process.env.ADMIN_EMAIL
@@ -430,7 +468,7 @@ export async function onUserCreated({
       html,
       type: "admin_notification",
       userId,
-      metadata: { role, referralCode: referral?.code },
+      metadata: { role, referralCode: referral?.code, packageTier },
     })
   }
 }

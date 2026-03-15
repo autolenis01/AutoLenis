@@ -16,7 +16,12 @@ export const signUpSchema = z.object({
   consentTextVersion: z.string().nullish(),
   consentTimestamp: z.string().nullish(),
   formSource: z.string().nullish(),
-})
+  // Buyer package tier – required when role is BUYER
+  packageTier: z.enum(["STANDARD", "PREMIUM"]).nullish(),
+}).refine(
+  (data) => data.role !== "BUYER" || (data.packageTier === "STANDARD" || data.packageTier === "PREMIUM"),
+  { message: "Package tier is required for buyer registration", path: ["packageTier"] },
+)
 
 export const signInSchema = z.object({
   email: z.string().email("Invalid email address"),

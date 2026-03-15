@@ -376,6 +376,55 @@ export default function AdminBuyerDetailPage({ params }: { params: Promise<{ buy
                     <dd className="font-medium">{buyer?.role || "BUYER"}</dd>
                   </div>
                   <div>
+                    <dt className="text-sm text-muted-foreground">Package Tier</dt>
+                    <dd className="font-medium">
+                      {profile?.packageTier === "PREMIUM" ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-800">
+                          Premium
+                        </span>
+                      ) : profile?.packageTier === "STANDARD" ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-800">
+                          Standard
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
+                      )}
+                    </dd>
+                  </div>
+                  {profile?.packageSelectionSource && (
+                    <div>
+                      <dt className="text-sm text-muted-foreground">Package Source</dt>
+                      <dd className="font-medium">{profile.packageSelectionSource}</dd>
+                    </div>
+                  )}
+                  {profile?.packageSelectedAt && (
+                    <div>
+                      <dt className="text-sm text-muted-foreground">Package Selected At</dt>
+                      <dd className="font-medium">{formatDate(profile.packageSelectedAt)}</dd>
+                    </div>
+                  )}
+                  {profile?.depositStatus && (
+                    <div>
+                      <dt className="text-sm text-muted-foreground">Deposit Status</dt>
+                      <dd className="font-medium">
+                        {profile.depositStatus === "PAID" ? (
+                          <span className="text-green-600">{profile.depositStatus}</span>
+                        ) : (
+                          <span className="text-yellow-600">{profile.depositStatus}</span>
+                        )}
+                        {profile.depositAmount != null && ` ($${profile.depositAmount})`}
+                      </dd>
+                    </div>
+                  )}
+                  {profile?.packageTier === "PREMIUM" && (
+                    <div>
+                      <dt className="text-sm text-muted-foreground">Premium Fee</dt>
+                      <dd className="font-medium">
+                        Total: {formatCurrency(profile.premiumFeeTotal ?? 499)} · Remaining: {formatCurrency(profile.premiumFeeRemaining ?? 0)}
+                      </dd>
+                    </div>
+                  )}
+                  <div>
                     <dt className="text-sm text-muted-foreground">Current Workflow Stage</dt>
                     <dd className="font-medium">
                       {buyer?.workflowStage || buyer?.stage || (deals.length > 0 ? "Deal Selected" : preQual ? "Pre-Qualified" : "Onboarding")}

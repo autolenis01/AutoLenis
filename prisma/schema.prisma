@@ -191,6 +191,20 @@ model BuyerProfile {
   monthlyIncomeCents  Int?
   monthlyHousingCents Int?
 
+  // Package tier (set at registration)
+  packageTier            String?   // "STANDARD" | "PREMIUM"
+  packageSelectedAt      DateTime?
+  packageSelectionSource String?   // e.g. "REGISTRATION"
+  packageVersion         String?
+
+  // Billing initialization state (written at registration, updated on payment)
+  depositRequired        Boolean?  @default(true)
+  depositAmount          Int?      @default(99)
+  depositStatus          String?   @default("NOT_PAID")
+  depositCreditTreatment String?   // "CREDIT_TO_VEHICLE_AT_CLOSING" | "CREDIT_TO_PREMIUM_FEE"
+  premiumFeeTotal        Int?      @default(0)
+  premiumFeeRemaining    Int?      @default(0)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

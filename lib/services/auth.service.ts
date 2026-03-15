@@ -4,6 +4,7 @@ import { hashPassword as hashPasswordUtil, verifyPassword as verifyPasswordUtil 
 import { createSession } from "@/lib/auth"
 import type { SignUpInput, SignInInput } from "@/lib/validators/auth"
 import { emailVerificationService } from "@/lib/services/email-verification.service"
+import { BuyerPackageTier, buildBillingInit, CURRENT_PACKAGE_VERSION } from "@/lib/constants/buyer-packages"
 
 export class AuthService {
   static async signUp(input: SignUpInput) {
@@ -63,6 +64,9 @@ export class AuthService {
 
       // Create role-specific profile record — errors must fail loudly
       if (input.role === "BUYER") {
+        const tier = (input.packageTier === "PREMIUM" ? BuyerPackageTier.PREMIUM : BuyerPackageTier.STANDARD)
+        const billing = buildBillingInit(tier)
+
         const { error: profileError } = await supabase.from("BuyerProfile").insert({
           id: crypto.randomUUID(),
           userId: user.id,
@@ -73,12 +77,37 @@ export class AuthService {
           city: "",
           state: "",
           zip: "",
+          // Package selection
+          packageTier: tier,
+          packageSelectedAt: now,
+          packageSelectionSource: "REGISTRATION",
+          packageVersion: CURRENT_PACKAGE_VERSION,
+          // Billing initialization
+          depositRequired: billing.depositRequired,
+          depositAmount: billing.depositAmount,
+          depositStatus: billing.depositStatus,
+          depositCreditTreatment: billing.depositCreditTreatment,
+          premiumFeeTotal: billing.premiumFeeTotal,
+          premiumFeeRemaining: billing.premiumFeeRemaining,
           createdAt: now,
           updatedAt: now,
         })
         if (profileError) {
           console.error(`[AuthService.signUp] Failed to create BuyerProfile correlationId=${correlationId}`, profileError)
           throw new Error(`Failed to create buyer profile. Please try again. (ref: ${correlationId})`)
+        }
+
+        // Audit event: package selected at registration
+        try {
+          await supabase.from("AdminAuditLog").insert({
+            id: crypto.randomUUID(),
+            userId: user.id,
+            action: "BUYER_PACKAGE_SELECTED_AT_REGISTRATION",
+            details: { packageTier: tier, source: "REGISTRATION", packageVersion: CURRENT_PACKAGE_VERSION },
+            createdAt: now,
+          })
+        } catch {
+          // Non-fatal: audit log failure should never block signup
         }
       } else if (input.role === "DEALER") {
         const { error: profileError } = await supabase.from("Dealer").insert({
@@ -193,6 +222,7 @@ export class AuthService {
           role: user.role,
           firstName: input.firstName,
           lastName: input.lastName,
+          packageTier: input.role === "BUYER" ? (input.packageTier || "STANDARD") : undefined,
         },
         token,
         referral,
