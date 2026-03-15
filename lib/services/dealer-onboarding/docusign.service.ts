@@ -4,7 +4,8 @@
  * Handles DocuSign envelope creation, status checks, and webhook
  * processing for the Dealer Participation Agreement.
  *
- * Uses JWT Grant authentication (server-to-server).
+ * Uses JWT Grant authentication (server-to-server) via the canonical
+ * auth service at lib/services/docusign/auth.service.ts.
  * All operations are idempotent where possible.
  */
 
@@ -12,26 +13,31 @@ import crypto from "node:crypto"
 
 import { logger } from "@/lib/logger"
 import { getDealerAgreementStoragePath } from "./types"
+import {
+  getDocuSignAuthConfig,
+  isDocuSignConfigured as isDocuSignConfiguredCanonical,
+  getDocuSignAccessToken,
+} from "@/lib/services/docusign/auth.service"
 
 // ---------------------------------------------------------------------------
-// Configuration
+// Configuration — delegates to canonical auth service
 // ---------------------------------------------------------------------------
 
 function getDocuSignConfig() {
+  const auth = getDocuSignAuthConfig()
   return {
-    accountId: process.env.DOCUSIGN_ACCOUNT_ID || "",
-    integrationKey: process.env.DOCUSIGN_INTEGRATION_KEY || "",
-    secretKey: process.env.DOCUSIGN_SECRET_KEY || "",
-    baseUrl: process.env.DOCUSIGN_BASE_URL || "https://demo.docusign.net/restapi",
-    oauthBaseUrl: process.env.DOCUSIGN_OAUTH_BASE_URL || "https://account-d.docusign.com",
+    accountId: auth.accountId,
+    integrationKey: auth.integrationKey,
+    secretKey: auth.secretKey,
+    baseUrl: auth.basePath,
+    oauthBaseUrl: auth.oauthBaseUrl,
     dealerTemplateId: process.env.DOCUSIGN_DEALER_TEMPLATE_ID || "",
-    webhookSecret: process.env.DOCUSIGN_WEBHOOK_SECRET || "",
+    webhookSecret: process.env.DOCUSIGN_WEBHOOK_SECRET || process.env.DOCUSIGN_CONNECT_SECRET || "",
   }
 }
 
 function isDocuSignConfigured(): boolean {
-  const config = getDocuSignConfig()
-  return !!(config.accountId && config.integrationKey && config.secretKey && config.dealerTemplateId)
+  return isDocuSignConfiguredCanonical()
 }
 
 // ---------------------------------------------------------------------------
@@ -279,34 +285,11 @@ export class DocuSignService {
 
   /**
    * Get a DocuSign API access token.
-   * Exposed for use by DealerAgreementService for recipient view generation.
+   * Delegates to the canonical auth service which supports JWT Grant
+   * with RSA private key and falls back to client_credentials.
    */
   async getAccessToken(): Promise<string> {
-    const config = getDocuSignConfig()
-
-    const url = `${config.oauthBaseUrl}/oauth/token`
-
-    const body = new URLSearchParams({
-      grant_type: "client_credentials",
-      client_id: config.integrationKey,
-      client_secret: config.secretKey,
-      scope: "signature",
-    })
-
-    const response = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: body.toString(),
-    })
-
-    if (!response.ok) {
-      const errorText = await response.text()
-      logger.error("DocuSign OAuth token request failed", { status: response.status })
-      throw new Error(`DocuSign OAuth error: ${response.status} — ${errorText}`)
-    }
-
-    const data = await response.json()
-    return data.access_token
+    return getDocuSignAccessToken()
   }
 }
 

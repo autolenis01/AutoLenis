@@ -189,3 +189,47 @@ export function checkActivationGate(application: {
 
   return { ready: missing.length === 0, missing }
 }
+
+// ---------------------------------------------------------------------------
+// Dealer Agreement Enforcement
+// ---------------------------------------------------------------------------
+
+export interface DealerAgreementGateResult {
+  allowed: boolean
+  blockers: string[]
+}
+
+/**
+ * Centralized enforcement check: is the dealer allowed to perform protected
+ * actions that require a completed agreement?
+ *
+ * Checks:
+ * - agreementRequired = true → agreementCompleted must be true
+ * - docusignBlocked must be false
+ * - accessState must not be 'SUSPENDED'
+ *
+ * Used by: dealer activation, inventory publishing, auction participation,
+ * offer submission, contract actions, payout eligibility.
+ */
+export function checkDealerAgreementGate(dealer: {
+  agreementRequired?: boolean
+  agreementCompleted?: boolean
+  docusignBlocked?: boolean
+  accessState?: string | null
+}): DealerAgreementGateResult {
+  const blockers: string[] = []
+
+  if (dealer.agreementRequired && !dealer.agreementCompleted) {
+    blockers.push("AGREEMENT_INCOMPLETE")
+  }
+
+  if (dealer.docusignBlocked) {
+    blockers.push("DOCUSIGN_BLOCKED")
+  }
+
+  if (dealer.accessState === "SUSPENDED") {
+    blockers.push("DEALER_SUSPENDED")
+  }
+
+  return { allowed: blockers.length === 0, blockers }
+}

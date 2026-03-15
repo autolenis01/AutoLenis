@@ -16,10 +16,12 @@ export {
   getDealerDocStoragePath,
   getDealerAgreementStoragePath,
   checkActivationGate,
+  checkDealerAgreementGate,
 } from "./types"
 
 export type {
   CreateApplicationInput,
   UploadDealerDocumentInput,
   ActivationGateResult,
+  DealerAgreementGateResult,
 } from "./types"

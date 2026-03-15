@@ -54,6 +54,7 @@ const envSchema = z.object({
   DOCUSIGN_WEBHOOK_SECRET: z.string().min(1).optional(),
   DOCUSIGN_CONNECT_SECRET: z.string().min(1).optional(),
   DOCUSIGN_RETURN_URL: z.string().url().optional(),
+  DOCUSIGN_BRAND_ID: z.string().min(1).optional(),
   DOCUSIGN_ENV: z.enum(["sandbox", "production"]).optional(),
 
   // AI / Gemini (Optional)

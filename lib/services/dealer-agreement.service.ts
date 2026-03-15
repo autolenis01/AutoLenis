@@ -155,41 +155,17 @@ export class DealerAgreementService {
       throw new Error(`Cannot sign agreement in status: ${agreement.status}`)
     }
 
-    const config = {
-      accountId: process.env.DOCUSIGN_ACCOUNT_ID || "",
-      baseUrl: process.env.DOCUSIGN_BASE_URL || "https://demo.docusign.net/restapi",
-    }
+    const { createRecipientView } = await import("@/lib/services/docusign/recipient-view.service")
 
-    // Generate recipient view URL via DocuSign API
-    const accessToken = await docuSignService.getAccessToken()
-    const url = `${config.baseUrl}/v2.1/accounts/${config.accountId}/envelopes/${agreement.docusignEnvelopeId}/views/recipient`
-
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        email: agreement.signerEmail,
-        userName: agreement.signerName,
-        clientUserId: agreement.docusignClientUserId,
-        returnUrl,
-        authenticationMethod: "none",
-      }),
+    const result = await createRecipientView({
+      envelopeId: agreement.docusignEnvelopeId,
+      signerEmail: agreement.signerEmail,
+      signerName: agreement.signerName,
+      clientUserId: agreement.docusignClientUserId || "",
+      returnUrl,
     })
 
-    if (!response.ok) {
-      const errorText = await response.text()
-      logger.error("DocuSign recipient view failed", {
-        status: response.status,
-        agreementId,
-      })
-      throw new Error(`DocuSign recipient view error: ${response.status} — ${errorText}`)
-    }
-
-    const data = await response.json()
-    return { url: data.url }
+    return { url: result.url }
   }
 
   // =========================================================================
@@ -364,17 +340,25 @@ export class DealerAgreementService {
       // Create file hash for trust record
       const fileHash = crypto.createHash("sha256").update(signedPdf).digest("hex")
 
-      // Write trusted document records
-      await createDocumentTrustRecordAsync({
-        ownerEntityId: dealerId,
-        ownerEntityType: OwnerEntityType.DEALER,
-        documentType: "DEALER_AGREEMENT_PDF",
-        storageSource: "supabase",
-        storageReference: signedPath,
-        uploaderId: "DOCUSIGN_CONNECT",
-        fileHash,
-        accessScope: AccessScope.ADMIN_ONLY,
-      })
+      // Write trusted document records (non-blocking — trusted_documents is optional)
+      try {
+        await createDocumentTrustRecordAsync({
+          ownerEntityId: dealerId,
+          ownerEntityType: OwnerEntityType.DEALER,
+          documentType: "DEALER_AGREEMENT_PDF",
+          storageSource: "supabase",
+          storageReference: signedPath,
+          uploaderId: "DOCUSIGN_CONNECT",
+          fileHash,
+          accessScope: AccessScope.ADMIN_ONLY,
+        })
+      } catch (trustErr) {
+        // trusted_documents is optional — do not block completion on failure
+        logger.warn("Trusted document record creation failed (non-blocking)", {
+          agreementId,
+          error: trustErr,
+        })
+      }
 
       // Update agreement with storage paths
       await prisma.dealerAgreement.update({
@@ -392,6 +376,7 @@ export class DealerAgreementService {
           agreementCompletedAt: new Date(),
           agreementSigned: true,
           agreementSignedAt: new Date(),
+          onboardingStatus: "AGREEMENT_COMPLETED",
         },
       })
 

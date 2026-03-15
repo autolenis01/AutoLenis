@@ -1,6 +1,10 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { dealerAgreementService } from "@/lib/services/dealer-agreement.service"
-import { verifyDocuSignHmac } from "@/lib/security/webhook-hmac"
+import {
+  verifyWebhookSignature,
+  parseWebhookPayload,
+} from "@/lib/services/docusign/webhook.service"
+import type { DocuSignConnectPayload } from "@/lib/types/docusign"
 import { logger } from "@/lib/logger"
 
 /**
@@ -15,23 +19,17 @@ export async function POST(req: NextRequest) {
     const rawBody = await req.text()
 
     // Verify webhook signature
-    const connectSecret = process.env.DOCUSIGN_CONNECT_SECRET || process.env.DOCUSIGN_WEBHOOK_SECRET || ""
     const signature = req.headers.get("x-docusign-signature-1") || ""
-
-    if (connectSecret && signature) {
-      if (!verifyDocuSignHmac(rawBody, signature, connectSecret)) {
-        logger.warn("DocuSign Connect webhook signature verification failed")
-        return NextResponse.json(
-          { error: { code: "INVALID_SIGNATURE", message: "Invalid webhook signature" } },
-          { status: 401 },
-        )
-      }
+    if (!verifyWebhookSignature(rawBody, signature)) {
+      logger.warn("DocuSign Connect webhook signature verification failed")
+      return NextResponse.json(
+        { error: { code: "INVALID_SIGNATURE", message: "Invalid webhook signature" } },
+        { status: 401 },
+      )
     }
 
-    const payload = JSON.parse(rawBody)
-    const envelopeId = payload?.data?.envelopeId
-    const envelopeStatus = payload?.data?.envelopeSummary?.status
-    const eventTime = payload?.generatedDateTime || new Date().toISOString()
+    const payload: DocuSignConnectPayload = JSON.parse(rawBody)
+    const { envelopeId, envelopeStatus, eventTime } = parseWebhookPayload(payload)
 
     if (!envelopeId) {
       return NextResponse.json(
@@ -50,7 +48,7 @@ export async function POST(req: NextRequest) {
       envelopeId,
       envelopeStatus || "",
       eventTime,
-      payload as Record<string, unknown>,
+      payload as unknown as Record<string, unknown>,
     )
 
     return NextResponse.json({ received: true, ...result })
