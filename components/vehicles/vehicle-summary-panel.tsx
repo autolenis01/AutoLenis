@@ -3,7 +3,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 import { Car, Building2, DollarSign } from "lucide-react"
-import { VehiclePriceBlock } from "./vehicle-price-block"
 import type { ReactNode } from "react"
 
 interface VehicleSummaryPanelProps {

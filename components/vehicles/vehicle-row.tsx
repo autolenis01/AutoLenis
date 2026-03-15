@@ -59,8 +59,6 @@ export function VehicleRow({
   const title = [year, make, model].filter(Boolean).join(" ")
   const displayPrice = priceCents != null ? priceCents / 100 : price
 
-  const Wrapper = onClick ? "button" : "tr"
-
   return (
     <tr
       className={cn(
