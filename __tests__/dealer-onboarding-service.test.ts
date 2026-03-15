@@ -79,7 +79,7 @@ vi.mock("@/lib/services/trust-infrastructure", () => ({
 }))
 
 vi.mock("@/lib/services/trust-infrastructure/types", () => ({
-  OwnerEntityType: { DEALER: "DEALER" },
+  OwnerEntityType: { DEALER: "DEALER", DEALER_APPLICATION: "DEALER_APPLICATION" },
   AccessScope: { ADMIN_ONLY: "ADMIN_ONLY" },
 }))
 
@@ -425,7 +425,7 @@ describe("DealerOnboardingService", () => {
       expect(mockCreateDocumentTrustRecordAsync).toHaveBeenCalledWith(
         expect.objectContaining({
           documentType: "DEALER_AGREEMENT",
-          ownerEntityType: "DEALER",
+          ownerEntityType: "DEALER_APPLICATION",
         }),
       )
       expect(mockWriteEventAsync).toHaveBeenCalledWith(

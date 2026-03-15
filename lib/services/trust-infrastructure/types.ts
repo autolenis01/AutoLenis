@@ -58,6 +58,7 @@ export type TrustDocumentType =
 export const OwnerEntityType = {
   BUYER: "BUYER",
   DEALER: "DEALER",
+  DEALER_APPLICATION: "DEALER_APPLICATION",
   ADMIN: "ADMIN",
   AFFILIATE: "AFFILIATE",
   DEAL: "DEAL",

@@ -8,6 +8,8 @@
  * All operations are idempotent where possible.
  */
 
+import crypto from "node:crypto"
+
 import { logger } from "@/lib/logger"
 import { getDealerAgreementStoragePath } from "./types"
 
@@ -244,7 +246,6 @@ export class DocuSignService {
     }
 
     try {
-      const crypto = require("crypto")
       const expectedSignature = crypto
         .createHmac("sha256", config.webhookSecret)
         .update(payload, "utf8")

@@ -195,7 +195,7 @@ export class DealerOnboardingService {
     // Create trusted document record
     await createDocumentTrustRecordAsync({
       ownerEntityId: applicationId,
-      ownerEntityType: OwnerEntityType.DEALER,
+      ownerEntityType: OwnerEntityType.DEALER_APPLICATION,
       documentType: docType,
       storageSource: "supabase",
       storageReference: storagePath,
@@ -370,7 +370,7 @@ export class DealerOnboardingService {
 
     const trustRecord = await createDocumentTrustRecordAsync({
       ownerEntityId: application.id,
-      ownerEntityType: OwnerEntityType.DEALER,
+      ownerEntityType: OwnerEntityType.DEALER_APPLICATION,
       documentType: "DEALER_AGREEMENT",
       storageSource: "supabase",
       storageReference: storagePath,
