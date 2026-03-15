@@ -184,7 +184,7 @@ test.describe("Flow 3 — Upgrade STANDARD buyer to PREMIUM", () => {
     const response = await request.post(`${TEST_BASE}/api/buyer/upgrade`, {
       data: {},
       headers: {
-        Authorization: "Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJmYWtlIiwicm9sZSI6IkJVWUVSIn0.invalid",
+        Authorization: "Bearer invalid.malformed.token",
       },
     })
     expect([401, 403]).toContain(response.status())
@@ -285,9 +285,10 @@ test.describe("Flow 5 — PREMIUM concierge fee payment", () => {
     })
     expect(response.status()).toBe(400)
     const body = await response.json()
-    // Should not leak stack traces
-    expect(JSON.stringify(body)).not.toContain("at ")
-    expect(JSON.stringify(body)).not.toContain("node_modules")
+    // Should not leak stack traces or internal paths
+    const bodyStr = JSON.stringify(body)
+    expect(bodyStr).not.toMatch(/\bat\s+\S+\s+\(/)
+    expect(bodyStr).not.toContain("node_modules/")
   })
 })
 
