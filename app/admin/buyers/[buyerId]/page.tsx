@@ -99,6 +99,9 @@ export default function AdminBuyerDetailPage({ params }: { params: Promise<{ buy
   const pickupAppointments = buyer?.pickupAppointments || []
   const complianceEvents = buyer?.complianceEvents || []
   const auditLogs = buyer?.adminAuditLogs || []
+  const packageBilling = data.packageBilling
+  const packageHistory = data.packageHistory || []
+  const paymentLedger = data.paymentLedger || []
 
   const totalOffers = auctions.reduce((sum: number, a: any) => sum + (a.offers?.length || 0), 0)
   const depositPaid = deals.some((d: any) => d.deposit?.status === "PAID")
@@ -314,6 +317,7 @@ export default function AdminBuyerDetailPage({ params }: { params: Promise<{ buy
           <TabsTrigger value="documents">Documents</TabsTrigger>
           <TabsTrigger value="pickup">Pickup</TabsTrigger>
           {affiliate && <TabsTrigger value="affiliate">Affiliate</TabsTrigger>}
+          <TabsTrigger value="package">Package</TabsTrigger>
           <TabsTrigger value="compliance">Compliance</TabsTrigger>
         </TabsList>
 
@@ -375,6 +379,85 @@ export default function AdminBuyerDetailPage({ params }: { params: Promise<{ buy
                     <dt className="text-sm text-muted-foreground">Role</dt>
                     <dd className="font-medium">{buyer?.role || "BUYER"}</dd>
                   </div>
+                  <div>
+                    <dt className="text-sm text-muted-foreground">Package Tier</dt>
+                    <dd className="font-medium">
+                      {profile?.package_tier === "PREMIUM" ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-800">
+                          Premium
+                        </span>
+                      ) : profile?.package_tier === "STANDARD" ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-800">
+                          Standard
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
+                      )}
+                    </dd>
+                  </div>
+                  {profile?.package_selection_source && (
+                    <div>
+                      <dt className="text-sm text-muted-foreground">Package Source</dt>
+                      <dd className="font-medium">{profile.package_selection_source}</dd>
+                    </div>
+                  )}
+                  {profile?.package_selected_at && (
+                    <div>
+                      <dt className="text-sm text-muted-foreground">Package Selected At</dt>
+                      <dd className="font-medium">{formatDate(profile.package_selected_at)}</dd>
+                    </div>
+                  )}
+                  {profile?.package_upgraded_at && (
+                    <div>
+                      <dt className="text-sm text-muted-foreground">Package Upgraded At</dt>
+                      <dd className="font-medium">{formatDate(profile.package_upgraded_at)}</dd>
+                    </div>
+                  )}
+                  {/* Billing data from canonical buyer_package_billing table */}
+                  {packageBilling ? (
+                    <>
+                      <div>
+                        <dt className="text-sm text-muted-foreground">Deposit Status</dt>
+                        <dd className="font-medium">
+                          {packageBilling.deposit_status === "PAID" ? (
+                            <span className="text-green-600">{packageBilling.deposit_status}</span>
+                          ) : (
+                            <span className="text-yellow-600">{packageBilling.deposit_status}</span>
+                          )}
+                          {packageBilling.deposit_amount_cents != null && ` ($${(packageBilling.deposit_amount_cents / 100).toFixed(0)})`}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className="text-sm text-muted-foreground">Deposit Credit Treatment</dt>
+                        <dd className="font-medium">{packageBilling.deposit_credit_treatment || "-"}</dd>
+                      </div>
+                      {profile?.package_tier === "PREMIUM" && (
+                        <>
+                          <div>
+                            <dt className="text-sm text-muted-foreground">Premium Fee Total</dt>
+                            <dd className="font-medium">{formatCurrency((packageBilling.premium_fee_total_cents || 0) / 100)}</dd>
+                          </div>
+                          <div>
+                            <dt className="text-sm text-muted-foreground">Premium Fee Credit from Deposit</dt>
+                            <dd className="font-medium">{formatCurrency((packageBilling.premium_fee_credit_from_deposit_cents || 0) / 100)}</dd>
+                          </div>
+                          <div>
+                            <dt className="text-sm text-muted-foreground">Premium Fee Remaining</dt>
+                            <dd className="font-medium">{formatCurrency((packageBilling.premium_fee_remaining_cents || 0) / 100)}</dd>
+                          </div>
+                          <div>
+                            <dt className="text-sm text-muted-foreground">Premium Fee Status</dt>
+                            <dd className="font-medium">{packageBilling.premium_fee_status || "-"}</dd>
+                          </div>
+                        </>
+                      )}
+                    </>
+                  ) : (
+                    <div>
+                      <dt className="text-sm text-muted-foreground">Deposit Status</dt>
+                      <dd className="font-medium text-muted-foreground">No billing data available</dd>
+                    </div>
+                  )}
                   <div>
                     <dt className="text-sm text-muted-foreground">Current Workflow Stage</dt>
                     <dd className="font-medium">
@@ -1238,6 +1321,74 @@ export default function AdminBuyerDetailPage({ params }: { params: Promise<{ buy
         )}
 
         {/* J. Compliance & Audit Logs */}
+        {/* Package History & Payment Ledger */}
+        <TabsContent value="package">
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Package Change History</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {packageHistory.length > 0 ? (
+                  <div className="space-y-3">
+                    {packageHistory.map((entry: any, i: number) => (
+                      <div key={entry.id || i} className="flex items-start gap-3 border-l-2 border-primary/20 pl-4 py-1">
+                        <div>
+                          <p className="text-sm font-medium">
+                            {entry.old_tier ? `${entry.old_tier} → ${entry.new_tier}` : `Initial: ${entry.new_tier}`}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Source: {entry.change_source}{entry.change_reason ? ` — ${entry.change_reason}` : ""}
+                          </p>
+                          <p className="text-xs text-muted-foreground">{formatDate(entry.changed_at)}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground text-sm">No package history recorded.</p>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Payment Ledger</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {paymentLedger.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="text-left py-2 px-2 font-medium text-muted-foreground">Type</th>
+                          <th className="text-left py-2 px-2 font-medium text-muted-foreground">Direction</th>
+                          <th className="text-right py-2 px-2 font-medium text-muted-foreground">Amount</th>
+                          <th className="text-left py-2 px-2 font-medium text-muted-foreground">External ID</th>
+                          <th className="text-left py-2 px-2 font-medium text-muted-foreground">Date</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {paymentLedger.map((entry: any, i: number) => (
+                          <tr key={entry.id || i} className="border-b last:border-0">
+                            <td className="py-2 px-2">{entry.payment_type}</td>
+                            <td className="py-2 px-2">{entry.direction}</td>
+                            <td className="py-2 px-2 text-right">{formatCurrency((entry.amount_cents || 0) / 100)}</td>
+                            <td className="py-2 px-2 text-xs font-mono">{entry.external_payment_id ? entry.external_payment_id.slice(0, 16) + "…" : "-"}</td>
+                            <td className="py-2 px-2">{formatDate(entry.created_at)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground text-sm">No payment ledger entries.</p>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
         <TabsContent value="compliance">
           <div className="space-y-6">
             <Card>

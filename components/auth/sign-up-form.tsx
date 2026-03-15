@@ -23,6 +23,11 @@ import {
   type ReferralAttribution,
 } from "@/components/affiliate/referral-capture"
 import { extractApiError } from "@/lib/utils/error-message"
+import { PackageSelector } from "@/components/auth/package-selector"
+import {
+  BuyerPackageTier,
+  PACKAGE_DISPLAY,
+} from "@/lib/constants/buyer-packages"
 
 export function SignUpForm() {
   const router = useRouter()
@@ -47,6 +52,8 @@ export function SignUpForm() {
     ) as "BUYER" | "DEALER" | "AFFILIATE",
     marketingConsent: false,
   })
+
+  const [packageTier, setPackageTier] = useState<BuyerPackageTier | null>(null)
 
   const [refCode, setRefCode] = useState<string | null>(null)
   const [referralMeta, setReferralMeta] =
@@ -124,6 +131,12 @@ export function SignUpForm() {
       return
     }
 
+    if (formData.role === "BUYER" && !packageTier) {
+      setError("Please select a package plan")
+      setLoading(false)
+      return
+    }
+
     try {
       let response: Response
       try {
@@ -132,6 +145,7 @@ export function SignUpForm() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             ...formData,
+            packageTier: formData.role === "BUYER" ? packageTier : undefined,
             marketingSmsConsent: formData.marketingConsent,
             marketingEmailConsent: formData.marketingConsent,
             refCode: refCode,
@@ -332,6 +346,14 @@ export function SignUpForm() {
             </select>
           </div>
 
+          {formData.role === "BUYER" && (
+            <PackageSelector
+              value={packageTier}
+              onChange={setPackageTier}
+              disabled={loading}
+            />
+          )}
+
           <div className="flex items-start gap-3 pt-1">
             <Checkbox
               id="marketingConsent"
@@ -390,6 +412,8 @@ export function SignUpForm() {
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Creating account...
               </>
+            ) : formData.role === "BUYER" && packageTier ? (
+              PACKAGE_DISPLAY[packageTier].cta
             ) : (
               "Create Account"
             )}

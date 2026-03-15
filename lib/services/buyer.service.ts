@@ -32,6 +32,11 @@ export const buyerService = {
           phone, 
           createdAt, 
           updatedAt,
+          package_tier,
+          package_selected_at,
+          package_selection_source,
+          package_upgraded_at,
+          package_version,
           user:User(email)
         `)
         .eq("userId", userId)
@@ -54,7 +59,7 @@ export const buyerService = {
 
       const buyerId = flattenedProfile.id
 
-      const [preQualResult, shortlistsResult, auctionsResult, dealsResult, pickupsResult, affiliateResult, vehicleRequestsResult] =
+      const [preQualResult, shortlistsResult, auctionsResult, dealsResult, pickupsResult, affiliateResult, vehicleRequestsResult, packageBillingResult] =
         await Promise.all([
           supabase
             .from("PreQualification")
@@ -139,6 +144,13 @@ export const buyerService = {
             .eq("buyerId", buyerId)
             .order("createdAt", { ascending: false })
             .limit(5),
+
+          // Package billing state from canonical buyer_package_billing table
+          supabase
+            .from("buyer_package_billing")
+            .select("*")
+            .eq("buyer_id", buyerId)
+            .maybeSingle(),
         ])
 
       const preQual = preQualResult.data
@@ -148,6 +160,7 @@ export const buyerService = {
       const pickups = pickupsResult.data || []
       const referralStats = affiliateResult.data
       const vehicleRequests = vehicleRequestsResult.data || []
+      const packageBilling = packageBillingResult?.data || null
 
       // Calculate sourcing stats
       const activeSourcingCases = vehicleRequests.filter(
@@ -201,6 +214,7 @@ export const buyerService = {
         pickups: pickups.slice(0, 3),
         recentActivity,
         referralStats,
+        billing: packageBilling,
       }
     } catch (error) {
       console.error("[BuyerService] Error fetching dashboard data:", error)

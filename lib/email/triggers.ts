@@ -27,6 +27,7 @@ type EmailLogType =
   | "admin_new_device"
   | "role_changed"
   | "break_glass"
+  | "upgrade_confirmation"
 
 interface SendEmailOptions {
   to: string | string[]
@@ -298,10 +299,44 @@ export async function sendWelcomeEmail(
   email: string,
   firstName: string,
   role?: string,
-  userId?: string
+  userId?: string,
+  packageTier?: string,
 ) {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_BASE_URL || "https://autolenis.com"
   const dashboardUrl = `${appUrl}/buyer/dashboard`
+
+  // Build package-specific copy for buyer emails
+  let packageBlock = ""
+  if (role === "BUYER" && packageTier === "PREMIUM") {
+    packageBlock = `
+      <div style="background: oklch(0.96 0.02 278); border: 1px solid oklch(0.90 0.06 278); border-radius: 10px; padding: 20px; margin: 20px 0;">
+        <h3 style="margin: 0 0 8px; font-size: 16px; font-weight: 700; color: oklch(0.38 0.14 278);">🎉 Premium Concierge Plan</h3>
+        <ul style="margin: 0; padding: 0 0 0 18px; color: oklch(0.42 0.02 260); line-height: 1.8; font-size: 14px;">
+          <li>$99 deposit credited toward your $499 concierge fee</li>
+          <li>$400 remaining after deposit is applied</li>
+          <li>Dedicated buying specialist assigned to your case</li>
+          <li>Financing assistance, contract review &amp; closing coordination</li>
+          <li>Free home delivery</li>
+          <li>Priority support throughout your purchase</li>
+        </ul>
+        <p style="margin: 12px 0 0; color: oklch(0.42 0.02 260); font-size: 14px;"><strong>Next step:</strong> Pay your $99 deposit so we can assign your concierge specialist.</p>
+      </div>
+    `
+  } else if (role === "BUYER") {
+    packageBlock = `
+      <div style="background: oklch(0.97 0.006 260); border: 1px solid oklch(0.90 0.008 260); border-radius: 10px; padding: 20px; margin: 20px 0;">
+        <h3 style="margin: 0 0 8px; font-size: 16px; font-weight: 700; color: oklch(0.13 0.02 260);">Standard / Free Plan</h3>
+        <ul style="margin: 0; padding: 0 0 0 18px; color: oklch(0.42 0.02 260); line-height: 1.8; font-size: 14px;">
+          <li>$99 serious-buyer deposit required to start your auction</li>
+          <li>Deposit credited toward your vehicle purchase at closing</li>
+          <li>Self-serve platform experience</li>
+          <li>Standard support</li>
+        </ul>
+        <p style="margin: 12px 0 0; color: oklch(0.42 0.02 260); font-size: 14px;"><strong>Next step:</strong> Complete pre-qualification, then pay your $99 deposit to start your auction.</p>
+        <p style="margin: 8px 0 0; color: oklch(0.55 0.02 260); font-size: 13px;">Want a dedicated specialist? You can upgrade to Premium at any time.</p>
+      </div>
+    `
+  }
 
   const html = `
     <div style="font-family: system-ui, -apple-system, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
@@ -315,6 +350,8 @@ export async function sendWelcomeEmail(
         <p style="margin: 0 0 16px 0; color: oklch(0.42 0.02 260); line-height: 1.6; font-size: 16px;">
           Your account has been successfully created${role ? ` as a ${role.toLowerCase()}` : ""}. You're now ready to experience car buying the way it should be.
         </p>
+
+        ${packageBlock}
         
         <p style="margin: 0 0 24px 0; color: oklch(0.42 0.02 260); line-height: 1.6; font-size: 16px;">
           Get started by visiting your dashboard to begin your car-buying journey with AutoLenis.
@@ -390,15 +427,17 @@ export async function onUserCreated({
   firstName,
   role,
   referral,
+  packageTier,
 }: {
   userId: string
   email: string
   firstName: string
   role: string
   referral?: { code: string } | null
+  packageTier?: string
 }) {
-  // Send welcome email to the user
-  await sendWelcomeEmail(email, firstName, role, userId)
+  // Send welcome email to the user (package-aware for buyers)
+  await sendWelcomeEmail(email, firstName, role, userId, packageTier)
 
   // Notify admin of new user (optional, can be disabled for high-volume)
   const adminEmail = process.env.ADMIN_NOTIFICATION_EMAIL || process.env.ADMIN_EMAIL
@@ -430,9 +469,110 @@ export async function onUserCreated({
       html,
       type: "admin_notification",
       userId,
-      metadata: { role, referralCode: referral?.code },
+      metadata: { role, referralCode: referral?.code, packageTier },
     })
   }
+}
+
+/**
+ * Send upgrade confirmation email when buyer upgrades to PREMIUM
+ */
+export async function sendUpgradeConfirmationEmail(
+  email: string,
+  firstName: string,
+  userId?: string,
+) {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_BASE_URL || "https://autolenis.com"
+  const dashboardUrl = `${appUrl}/buyer/dashboard`
+
+  const html = `
+    <div style="font-family: system-ui, -apple-system, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
+      <div style="text-align: center; margin-bottom: 40px;">
+        <h1 style="color: oklch(0.38 0.14 278); margin: 0; font-size: 28px; font-weight: 700;">AutoLenis</h1>
+      </div>
+      
+      <div style="background: white; border-radius: 12px; padding: 32px; border: 1px solid oklch(0.915 0.008 260); box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
+        <h2 style="margin: 0 0 16px 0; font-size: 24px; font-weight: 700; color: oklch(0.13 0.02 260);">You're now on Premium, ${firstName}! 🎉</h2>
+        
+        <p style="margin: 0 0 16px 0; color: oklch(0.42 0.02 260); line-height: 1.6; font-size: 16px;">
+          Your account has been upgraded to the Premium / $499 Concierge Plan. Here's what changes:
+        </p>
+        
+        <div style="background: oklch(0.96 0.02 278); border: 1px solid oklch(0.90 0.06 278); border-radius: 10px; padding: 20px; margin: 20px 0;">
+          <ul style="margin: 0; padding: 0 0 0 18px; color: oklch(0.42 0.02 260); line-height: 1.8; font-size: 14px;">
+            <li>Your $99 deposit will now be credited toward the concierge fee</li>
+            <li>$400 remaining after deposit is applied</li>
+            <li>A dedicated buying specialist will be assigned to your case</li>
+            <li>Financing assistance, contract review &amp; closing coordination included</li>
+            <li>Free home delivery</li>
+            <li>Priority support throughout your purchase</li>
+          </ul>
+        </div>
+        
+        <a href="${dashboardUrl}" 
+           style="display: inline-block; background: oklch(0.38 0.14 278); color: white; padding: 14px 32px; text-decoration: none; border-radius: 10px; font-weight: 600; font-size: 16px;">
+          Go to Dashboard
+        </a>
+      </div>
+      
+      <div style="text-align: center; margin-top: 32px;">
+        <p style="margin: 0; color: oklch(0.55 0.02 260); font-size: 13px;">
+          &copy; ${new Date().getFullYear()} <span style="color: oklch(0.65 0.18 278);">AutoLenis</span>. All rights reserved.
+        </p>
+      </div>
+    </div>
+  `
+
+  return sendEmail({
+    to: email,
+    subject: `You've upgraded to Premium, ${firstName}!`,
+    html,
+    type: "upgrade_confirmation",
+    userId,
+  })
+}
+
+/**
+ * Notify admin/concierge team when a buyer selects or upgrades to PREMIUM
+ */
+export async function sendPremiumSpecialistNotification(
+  buyerName: string,
+  buyerEmail: string,
+  buyerId: string,
+  source: "REGISTRATION" | "DASHBOARD_UPGRADE",
+) {
+  const adminEmail = process.env.ADMIN_NOTIFICATION_EMAIL || process.env.ADMIN_EMAIL || "concierge@autolenis.com"
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_BASE_URL || "https://autolenis.com"
+
+  const html = `
+    <div style="font-family: system-ui, -apple-system, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
+      <h2 style="margin: 0 0 24px 0; font-size: 24px; font-weight: 700; color: oklch(0.13 0.02 260);">New Premium Buyer — Specialist Assignment Needed</h2>
+      
+      <div style="background: oklch(0.96 0.02 278); border: 1px solid oklch(0.90 0.06 278); border-radius: 8px; padding: 20px; margin-bottom: 16px;">
+        <p style="margin: 0 0 8px 0; color: oklch(0.42 0.02 260);"><strong>Buyer:</strong> ${buyerName}</p>
+        <p style="margin: 0 0 8px 0; color: oklch(0.42 0.02 260);"><strong>Email:</strong> ${buyerEmail}</p>
+        <p style="margin: 0 0 8px 0; color: oklch(0.42 0.02 260);"><strong>Source:</strong> ${source === "REGISTRATION" ? "Selected at registration" : "Upgraded from Standard"}</p>
+        <p style="margin: 0; color: oklch(0.42 0.02 260);"><strong>Buyer ID:</strong> ${buyerId}</p>
+      </div>
+
+      <a href="${appUrl}/admin/buyers/${buyerId}" 
+         style="display: inline-block; background: oklch(0.38 0.14 278); color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px;">
+        View Buyer in Admin
+      </a>
+      
+      <p style="margin: 16px 0 0; color: oklch(0.42 0.02 260); font-size: 14px;">
+        Please assign a concierge specialist and begin the premium onboarding workflow.
+      </p>
+    </div>
+  `
+
+  return sendEmail({
+    to: adminEmail,
+    subject: `[Premium] New specialist assignment: ${buyerName}`,
+    html,
+    type: "admin_notification",
+    metadata: { buyerId, source },
+  })
 }
 
 // ============================================================

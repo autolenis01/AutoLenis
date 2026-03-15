@@ -191,6 +191,13 @@ model BuyerProfile {
   monthlyIncomeCents  Int?
   monthlyHousingCents Int?
 
+  // Package tier (set at registration, managed by Supabase RPCs)
+  packageTier            String?   @map("package_tier") // "STANDARD" | "PREMIUM"
+  packageSelectedAt      DateTime? @map("package_selected_at")
+  packageSelectionSource String?   @map("package_selection_source") // e.g. "REGISTRATION"
+  packageUpgradedAt      DateTime? @map("package_upgraded_at")
+  packageVersion         String?   @map("package_version")
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

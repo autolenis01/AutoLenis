@@ -76,6 +76,7 @@ export async function POST(request: Request) {
       firstName: user.firstName || validated.firstName,
       role: user.role,
       referral: result.referral ? { code: result.referral.referralCode } : undefined,
+      packageTier: user.packageTier ?? undefined,
     }).catch((err) => {
       logger.error("onUserCreated trigger failed", err as Error)
     })
