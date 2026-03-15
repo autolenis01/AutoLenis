@@ -8,7 +8,7 @@
  * Do NOT spread onboarding state logic across route handlers.
  */
 
-import { prisma } from "@/lib/db"
+import { prisma, getSupabase } from "@/lib/db"
 import { logger } from "@/lib/logger"
 import { writeEventAsync } from "@/lib/services/event-ledger"
 import {
@@ -27,7 +27,7 @@ import {
   type CreateApplicationInput,
   type DealerDocumentType,
 } from "./types"
-import crypto from "crypto"
+import crypto from "node:crypto"
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -159,20 +159,19 @@ export class DealerOnboardingService {
     const application = await this.getApplicationOrThrow(applicationId)
 
     // Only allow uploads in DRAFT, SUBMITTED, DOCS_REQUESTED, UNDER_REVIEW
-    const uploadableStatuses = [
+    const uploadableStatuses: string[] = [
       DealerApplicationStatus.DRAFT,
       DealerApplicationStatus.SUBMITTED,
       DealerApplicationStatus.DOCS_REQUESTED,
       DealerApplicationStatus.UNDER_REVIEW,
     ]
-    if (!uploadableStatuses.includes(application.status as DealerApplicationStatus)) {
+    if (!uploadableStatuses.includes(application.status)) {
       throw new Error(`Cannot upload documents in status ${application.status}`)
     }
 
     const storagePath = getDealerDocStoragePath(applicationId, docType, filename)
 
     // Upload to Supabase Storage (service-side)
-    const { getSupabase } = require("@/lib/db")
     const supabaseAdmin = getSupabase()
     const { error: uploadError } = await supabaseAdmin.storage
       .from("dealer-docs")
@@ -349,7 +348,6 @@ export class DealerOnboardingService {
       envelopeId,
     )
 
-    const { getSupabase } = require("@/lib/db")
     const supabaseAdmin = getSupabase()
     const { error: uploadError } = await supabaseAdmin.storage
       .from("contracts")
@@ -388,7 +386,7 @@ export class DealerOnboardingService {
         status: DealerApplicationStatus.AGREEMENT_SIGNED,
         agreementSignedAt: new Date(),
         agreementStoragePath: storagePath,
-        agreementDocumentId: trustRecord?.id || null,
+        agreementDocumentId: trustRecord?.record?.id || null,
       },
     })
 
