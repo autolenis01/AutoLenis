@@ -1,10 +1,6 @@
 "use client"
 
-import { Card, CardContent } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Heart, MapPin } from "lucide-react"
-import Image from "next/image"
+import { VehicleCard as CanonicalVehicleCard, type ChipVariant } from "@/components/vehicles"
 
 interface VehicleCardProps {
   vehicle: any
@@ -15,6 +11,10 @@ interface VehicleCardProps {
   showInBudget?: boolean
 }
 
+/**
+ * Legacy adapter — maps the old { vehicle, inventoryItem, dealer } shape
+ * to the canonical VehicleCard props so existing consumers continue to work.
+ */
 export function VehicleCard({
   vehicle,
   inventoryItem,
@@ -23,76 +23,27 @@ export function VehicleCard({
   isInShortlist,
   showInBudget,
 }: VehicleCardProps) {
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-      maximumFractionDigits: 0,
-    }).format(amount)
-  }
+  const chips: ChipVariant[] = []
+  if (showInBudget) chips.push("in-budget")
 
-  const formatMileage = (miles: number) => {
-    return new Intl.NumberFormat("en-US").format(miles) + " mi"
-  }
-
-  const vehicleDescription = `${vehicle.year} ${vehicle.make} ${vehicle.model}${vehicle.trim ? ` ${vehicle.trim}` : ""}`
+  const dealerLocation = [dealer?.city, dealer?.state].filter(Boolean).join(", ")
 
   return (
-    <Card className="overflow-hidden hover:shadow-lg transition-shadow">
-      <div className="relative aspect-video bg-muted">
-        <Image
-          src={
-            vehicle.images?.[0] ||
-            "/placeholder.jpg"
-          }
-          alt={vehicleDescription}
-          fill
-          className="object-cover"
-          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-          priority={false}
-        />
-        {showInBudget && <Badge className="absolute top-3 right-3 bg-accent text-accent-foreground">In Budget</Badge>}
-      </div>
-      <CardContent className="p-4">
-        <div className="mb-3">
-          <h3 className="font-semibold text-lg leading-tight mb-1">
-            {vehicle.year} {vehicle.make} {vehicle.model}
-          </h3>
-          {vehicle.trim && <p className="text-sm text-muted-foreground">{vehicle.trim}</p>}
-        </div>
-
-        <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
-          <span>{formatMileage(vehicle.mileage)}</span>
-          <span>•</span>
-          <span>{vehicle.bodyStyle}</span>
-        </div>
-
-        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
-          <MapPin className="h-4 w-4" />
-          <span>
-            {dealer.businessName} - {dealer.city}, {dealer.state}
-          </span>
-        </div>
-
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="text-2xl font-bold">{formatCurrency(inventoryItem.price)}</div>
-            <div className="text-xs text-muted-foreground">Est. OTD price</div>
-          </div>
-
-          {onAddToShortlist && (
-            <Button
-              variant={isInShortlist ? "secondary" : "default"}
-              size="sm"
-              onClick={onAddToShortlist}
-              disabled={isInShortlist}
-            >
-              <Heart className={`h-4 w-4 mr-2 ${isInShortlist ? "fill-current" : ""}`} />
-              {isInShortlist ? "Added" : "Add"}
-            </Button>
-          )}
-        </div>
-      </CardContent>
-    </Card>
+    <CanonicalVehicleCard
+      year={vehicle?.year}
+      make={vehicle?.make}
+      model={vehicle?.model}
+      trim={vehicle?.trim}
+      imageSrc={vehicle?.images?.[0] || null}
+      mileage={vehicle?.mileage}
+      bodyStyle={vehicle?.bodyStyle}
+      price={inventoryItem?.price}
+      priceLabel="Est. OTD Price"
+      dealerName={dealer?.businessName}
+      dealerLocation={dealerLocation}
+      chips={chips}
+      onAddToShortlist={onAddToShortlist}
+      isInShortlist={isInShortlist}
+    />
   )
 }

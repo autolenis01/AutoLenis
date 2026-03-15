@@ -5,53 +5,26 @@ import type React from "react"
 import { csrfHeaders } from "@/lib/csrf-client"
 import { useState, useEffect } from "react"
 import { ProtectedRoute } from "@/components/layout/protected-route"
+import { VehicleCard as CanonicalVehicleCard, VehicleStatusChip, VehicleLoadingSkeleton, VehicleEmptyState, type ChipVariant } from "@/components/vehicles"
 import { VehicleCard } from "@/components/buyer/vehicle-card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Skeleton } from "@/components/ui/skeleton"
 import { useToast } from "@/hooks/use-toast"
 import { extractApiError } from "@/lib/utils/error-message"
 import { useRouter } from "next/navigation"
-import { ShoppingCart, AlertCircle, DollarSign, ArrowRight, Shield, Globe, CheckCircle2 } from "lucide-react"
+import { ShoppingCart, AlertCircle, DollarSign, ArrowRight, Shield, Globe } from "lucide-react"
 import Link from "next/link"
 import NoLocalDealersNotice from "@/components/buyer/no-local-dealers-notice"
 
 type TrustLabel = "Verified Available" | "Likely Available" | "Availability Unconfirmed"
 
-function TrustBadge({ label }: { label: TrustLabel }) {
-  switch (label) {
-    case "Verified Available":
-      return (
-        <Badge className="bg-green-100 text-green-800 border-green-200 gap-1">
-          <Shield className="h-3 w-3" />
-          Verified Available
-        </Badge>
-      )
-    case "Likely Available":
-      return (
-        <Badge className="bg-blue-100 text-blue-800 border-blue-200 gap-1">
-          <CheckCircle2 className="h-3 w-3" />
-          Likely Available
-        </Badge>
-      )
-    case "Availability Unconfirmed":
-      return (
-        <Badge variant="secondary" className="gap-1">
-          <Globe className="h-3 w-3" />
-          Availability Unconfirmed
-        </Badge>
-      )
-  }
-}
-
-function SourceBadge({ source }: { source: string }) {
-  if (source === "verified") {
-    return <Badge variant="outline" className="text-xs text-green-700 border-green-300">Network Dealer</Badge>
-  }
-  return <Badge variant="outline" className="text-xs text-muted-foreground">Market</Badge>
+const TRUST_CHIP_MAP: Record<TrustLabel, ChipVariant> = {
+  "Verified Available": "verified",
+  "Likely Available": "likely-available",
+  "Availability Unconfirmed": "unconfirmed",
 }
 
 export default function BuyerSearchPage() {
@@ -228,15 +201,14 @@ export default function BuyerSearchPage() {
       <ProtectedRoute allowedRoles={["BUYER"]}>
         <div className="min-h-screen bg-muted/30">
           <div className="container py-8">
-            <Skeleton className="h-10 w-64 mb-2" />
-            <Skeleton className="h-6 w-96 mb-8" />
+            <div className="mb-8 space-y-2">
+              <div className="h-10 w-64 bg-muted rounded animate-pulse" />
+              <div className="h-6 w-96 bg-muted rounded animate-pulse" />
+            </div>
             <div className="grid lg:grid-cols-4 gap-6">
-              <Skeleton className="h-64 lg:col-span-1" />
-              <div className="lg:col-span-3 grid md:grid-cols-2 gap-6">
-                <Skeleton className="h-80" />
-                <Skeleton className="h-80" />
-                <Skeleton className="h-80" />
-                <Skeleton className="h-80" />
+              <div className="h-64 bg-muted rounded-xl animate-pulse lg:col-span-1" />
+              <div className="lg:col-span-3">
+                <VehicleLoadingSkeleton variant="card" count={4} className="grid-cols-1 md:grid-cols-2" />
               </div>
             </div>
           </div>
@@ -382,11 +354,11 @@ export default function BuyerSearchPage() {
                 <div className="pt-4 border-t space-y-2">
                   <p className="text-sm font-medium">Availability Labels</p>
                   <div className="space-y-1.5">
-                    <TrustBadge label="Verified Available" />
+                    <VehicleStatusChip variant="verified" size="md" />
                     <p className="text-xs text-muted-foreground ml-1">Confirmed by network dealer</p>
-                    <TrustBadge label="Likely Available" />
+                    <VehicleStatusChip variant="likely-available" size="md" />
                     <p className="text-xs text-muted-foreground ml-1">High confidence from market data</p>
-                    <TrustBadge label="Availability Unconfirmed" />
+                    <VehicleStatusChip variant="unconfirmed" size="md" />
                     <p className="text-xs text-muted-foreground ml-1">Sourced from public listing</p>
                   </div>
                 </div>
@@ -404,13 +376,13 @@ export default function BuyerSearchPage() {
                     <Badge variant="secondary">{filteredVehicles.length}</Badge>
                   </div>
                   <div className="grid md:grid-cols-2 gap-6">
-                    {filteredVehicles.map((item) => (
-                      <div key={item.id} className="relative">
-                        <div className="absolute top-3 left-3 z-10 flex flex-col gap-1">
-                          <TrustBadge label={getTrustLabel(item)} />
-                          <SourceBadge source="verified" />
-                        </div>
+                    {filteredVehicles.map((item) => {
+                      const trustChip = TRUST_CHIP_MAP[getTrustLabel(item)]
+                      const chips: ChipVariant[] = [trustChip, "network"]
+                      if (isInBudget(item.price)) chips.push("in-budget")
+                      return (
                         <VehicleCard
+                          key={item.id}
                           vehicle={item.vehicle || item}
                           inventoryItem={item}
                           dealer={item.dealer || { businessName: item.dealerName, city: "", state: "" }}
@@ -418,8 +390,8 @@ export default function BuyerSearchPage() {
                           isInShortlist={isInShortlist(item.id)}
                           showInBudget={isInBudget(item.price)}
                         />
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 </div>
               )}
@@ -438,45 +410,24 @@ export default function BuyerSearchPage() {
                   <div className="grid md:grid-cols-2 gap-6">
                     {filteredMarketVehicles.map((item) => {
                       const price = item.priceCents ? item.priceCents / 100 : item.price || 0
+                      const trustChip = TRUST_CHIP_MAP[getTrustLabel(item)]
+                      const chips: ChipVariant[] = [trustChip, "market"]
                       return (
-                        <div key={item.id} className="relative">
-                          <div className="absolute top-3 left-3 z-10 flex flex-col gap-1">
-                            <TrustBadge label={getTrustLabel(item)} />
-                            <SourceBadge source="market" />
-                          </div>
-                          <Card className="overflow-hidden hover:shadow-lg transition-shadow">
-                            <div className="relative aspect-video bg-muted flex items-center justify-center">
-                              {item.images?.[0] ? (
-                                <img
-                                  src={item.images[0]}
-                                  alt={`${item.year} ${item.make} ${item.model}`}
-                                  className="object-cover w-full h-full"
-                                />
-                              ) : (
-                                <CarIcon className="h-16 w-16 text-muted-foreground/30" />
-                              )}
-                            </div>
-                            <CardContent className="p-4">
-                              <h3 className="font-semibold text-lg leading-tight mb-1">
-                                {item.year} {item.make} {item.model}
-                              </h3>
-                              {item.trim && <p className="text-sm text-muted-foreground">{item.trim}</p>}
-                              <div className="flex items-center gap-4 text-sm text-muted-foreground my-2">
-                                {item.mileage && <span>{Number(item.mileage).toLocaleString()} mi</span>}
-                                {item.bodyStyle && <><span>•</span><span>{item.bodyStyle}</span></>}
-                              </div>
-                              {item.dealerName && (
-                                <p className="text-sm text-muted-foreground mb-2">{item.dealerName}{item.dealerZip ? ` — ${item.dealerZip}` : ""}</p>
-                              )}
-                              <div className="flex items-center justify-between mt-3">
-                                <div>
-                                  <div className="text-2xl font-bold">{price > 0 ? formatCurrency(price) : "Contact for price"}</div>
-                                  <div className="text-xs text-muted-foreground">Market listing</div>
-                                </div>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        </div>
+                        <CanonicalVehicleCard
+                          key={item.id}
+                          year={item.year}
+                          make={item.make}
+                          model={item.model}
+                          trim={item.trim}
+                          imageSrc={item.images?.[0] || null}
+                          mileage={item.mileage ? Number(item.mileage) : undefined}
+                          bodyStyle={item.bodyStyle}
+                          price={price}
+                          priceLabel="Market listing"
+                          dealerName={item.dealerName}
+                          dealerLocation={item.dealerZip}
+                          chips={chips}
+                        />
                       )
                     })}
                   </div>
@@ -488,20 +439,19 @@ export default function BuyerSearchPage() {
                   {coverageGap && !noticeDismissed ? (
                     <NoLocalDealersNotice onDismiss={() => setNoticeDismissed(true)} />
                   ) : (
-                    <div className="text-center py-12">
-                      <CarIcon className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                      <h3 className="font-semibold mb-2">No vehicles found</h3>
-                      <p className="text-muted-foreground mb-4">
-                        {preQual && !preQual.isExpired
+                    <VehicleEmptyState
+                      title="No vehicles found"
+                      description={
+                        preQual && !preQual.isExpired
                           ? "No vehicles match your budget. Try adjusting your pre-qualification."
-                          : "No vehicles found matching your criteria"}
-                      </p>
-                      {preQual && !preQual.isExpired && (
-                        <Link href="/buyer/prequal">
-                          <Button variant="outline">Update Pre-Qualification</Button>
-                        </Link>
-                      )}
-                    </div>
+                          : "No vehicles found matching your criteria."
+                      }
+                      primaryAction={
+                        preQual && !preQual.isExpired
+                          ? { label: "Update Pre-Qualification", href: "/buyer/prequal" }
+                          : undefined
+                      }
+                    />
                   )}
                 </div>
               )}
@@ -513,24 +463,3 @@ export default function BuyerSearchPage() {
   )
 }
 
-function CarIcon(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      {...props}
-    >
-      <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2" />
-      <circle cx="7" cy="17" r="2" />
-      <path d="M9 17h6" />
-      <circle cx="17" cy="17" r="2" />
-    </svg>
-  )
-}
