@@ -14,14 +14,22 @@ describe("Prisma status helpers", () => {
   })
 
   describe("isPrismaConfigured", () => {
-    it("returns true when POSTGRES_PRISMA_URL is set", async () => {
-      process.env["POSTGRES_PRISMA_URL"] = "postgresql://localhost:5432/test"
+    it("returns true when DATABASE_URL is set", async () => {
+      process.env["DATABASE_URL"] = "postgresql://localhost:5432/test"
       // Re-import to pick up env change
       const { isPrismaConfigured } = await import("@/lib/db")
       expect(isPrismaConfigured()).toBe(true)
     })
 
-    it("returns false when POSTGRES_PRISMA_URL is empty", async () => {
+    it("returns true when legacy POSTGRES_PRISMA_URL is set", async () => {
+      delete process.env["DATABASE_URL"]
+      process.env["POSTGRES_PRISMA_URL"] = "postgresql://localhost:5432/test"
+      const { isPrismaConfigured } = await import("@/lib/db")
+      expect(isPrismaConfigured()).toBe(true)
+    })
+
+    it("returns false when neither DATABASE_URL nor POSTGRES_PRISMA_URL is set", async () => {
+      delete process.env["DATABASE_URL"]
       delete process.env["POSTGRES_PRISMA_URL"]
       const { isPrismaConfigured } = await import("@/lib/db")
       expect(isPrismaConfigured()).toBe(false)

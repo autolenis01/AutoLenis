@@ -13,15 +13,14 @@ This guide will help you set up the AutoLenis platform for development or deploy
 
 ### 1. Database Configuration
 
-The platform uses Supabase/Neon PostgreSQL. You need to set the following variables:
+The platform uses Supabase PostgreSQL. You need to set the following variables:
 
 \`\`\`bash
-# Primary database URL for Prisma (uses connection pooling)
-POSTGRES_PRISMA_URL="postgresql://user:pass@host:5432/db?pgbouncer=true"
-
-# Other database URLs (automatically set by Supabase)
-POSTGRES_URL="postgresql://user:pass@host:5432/db"
-POSTGRES_URL_NON_POOLING="postgresql://user:pass@host:5432/db"
+# Supabase shared connection pooler (Settings → Database → Connection string → URI)
+# Pooled connection (port 6543, via PgBouncer) — used by Prisma for queries
+DATABASE_URL="postgresql://postgres.vpwnjibcrqujclqalkgy:[YOUR-PASSWORD]@aws-1-us-east-1.pooler.supabase.com:6543/postgres?pgbouncer=true"
+# Direct connection (port 5432) — used by Prisma for migrations
+DIRECT_URL="postgresql://postgres.vpwnjibcrqujclqalkgy:[YOUR-PASSWORD]@aws-1-us-east-1.pooler.supabase.com:5432/postgres"
 \`\`\`
 
 **How to get these:**
@@ -102,7 +101,7 @@ npx prisma db push
 
 3. Initialize database (optional):
 \`\`\`bash
-psql $POSTGRES_URL < scripts/01-initialize-database.sql
+psql $DATABASE_URL < scripts/01-initialize-database.sql
 \`\`\`
 
 ## Supabase ↔ GitHub Integration
@@ -126,7 +125,7 @@ Create a test file:
 \`\`\`typescript
 // test-env.ts
 console.log({
-  database: !!process.env.POSTGRES_PRISMA_URL,
+  database: !!process.env.DATABASE_URL,
   supabase: !!process.env.SUPABASE_URL,
   stripe: !!process.env.STRIPE_SECRET_KEY,
   jwt: !!process.env.JWT_SECRET,
@@ -189,7 +188,7 @@ Vercel will automatically deploy on push.
 
 ### "Invalid DATABASE_URL"
 
-**Solution:** Use `POSTGRES_PRISMA_URL` instead of `DATABASE_URL` in schema.prisma.
+**Solution:** Ensure `DATABASE_URL` is set to a valid Supabase shared connection pooler URL (port 6543 with `?pgbouncer=true`).
 
 ### "0 tables found" in database
 

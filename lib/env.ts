@@ -20,9 +20,11 @@ const envSchema = z.object({
   CRON_SECRET: z.string().min(1, "CRON_SECRET is required for cron job security"),
 
   // Database URLs (Optional — Prisma is optional, Supabase is primary)
+  // Supabase shared connection pooler standard names
   DATABASE_URL: z.string().url("DATABASE_URL must be a valid URL").optional(),
+  DIRECT_URL: z.string().url("DIRECT_URL must be a valid URL").optional(),
+  // Legacy aliases (still accepted for backward compatibility)
   POSTGRES_PRISMA_URL: z.string().url("POSTGRES_PRISMA_URL must be a valid URL").optional(),
-  POSTGRES_URL: z.string().url("POSTGRES_URL must be a valid URL").optional(),
   POSTGRES_URL_NON_POOLING: z.string().url("POSTGRES_URL_NON_POOLING must be a valid URL").optional(),
 
   // Email (Required — all emails are sent LIVE via Resend)
@@ -34,10 +36,6 @@ const envSchema = z.object({
   // Supabase (Optional)
   SUPABASE_URL: z.string().url("SUPABASE_URL must be a valid URL").optional(),
   SUPABASE_JWT_SECRET: z.string().min(1, "SUPABASE_JWT_SECRET must not be empty").optional(),
-
-  // Database URLs (Optional — used by Prisma directUrl and migration scripts)
-  POSTGRES_URL: z.string().url("POSTGRES_URL must be a valid URL").optional(),
-  POSTGRES_URL_NON_POOLING: z.string().url("POSTGRES_URL_NON_POOLING must be a valid URL").optional(),
 
   // E-sign webhooks (Optional)
   ESIGN_WEBHOOK_SECRET: z.string().min(1, "ESIGN_WEBHOOK_SECRET must not be empty").optional(),

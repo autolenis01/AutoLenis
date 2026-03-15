@@ -94,12 +94,13 @@ let _prismaLoadAttempted = false
 let _prismaLoadError: string | null = null
 
 /**
- * Check whether the `POSTGRES_PRISMA_URL` env var is set.
- * This is a prerequisite for Prisma — without it the client constructor
- * will throw immediately.
+ * Check whether the Prisma database URL env var is set.
+ * Accepts `DATABASE_URL` (Supabase shared pooler standard) or the legacy
+ * `POSTGRES_PRISMA_URL` alias.  This is a prerequisite for Prisma — without
+ * it the client constructor will throw immediately.
  */
 export function isPrismaConfigured(): boolean {
-  return !!process.env["POSTGRES_PRISMA_URL"]
+  return !!(process.env["DATABASE_URL"] || process.env["POSTGRES_PRISMA_URL"])
 }
 
 /**
