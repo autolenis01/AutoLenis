@@ -24,7 +24,10 @@ export async function POST(request: Request) {
 
     // Delegate to the canonical deposit payment service
     const { PaymentService } = await import("@/lib/services/payment.service")
-      .catch(() => ({ PaymentService: null }))
+      .catch((importErr) => {
+        console.error("[create-checkout-session] PaymentService import failed:", importErr)
+        return { PaymentService: null }
+      })
 
     if (!PaymentService) {
       return NextResponse.json(
