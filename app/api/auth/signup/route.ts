@@ -4,7 +4,7 @@ import { signUpSchema } from "@/lib/validators/auth"
 import { setSessionCookie } from "@/lib/auth-server"
 import { getRoleBasedRedirect } from "@/lib/auth"
 import { rateLimit, rateLimits } from "@/lib/middleware/rate-limit"
-import { handleError, ConflictError } from "@/lib/middleware/error-handler"
+import { handleError, ConflictError, ValidationError, AppError } from "@/lib/middleware/error-handler"
 import { logger } from "@/lib/logger"
 import { onUserCreated } from "@/lib/email/triggers"
 import { emailVerificationService } from "@/lib/services/email-verification.service"
@@ -58,7 +58,25 @@ export async function POST(request: Request) {
 
     logger.debug("Parsing signup request", { email: body.email })
 
-    const validated = signUpSchema.parse(body)
+    // Use safeParse to guarantee validation errors always return 400, never 500
+    const parseResult = signUpSchema.safeParse(body)
+    if (!parseResult.success) {
+      const fields: Record<string, string> = {}
+      parseResult.error.errors.forEach((err) => {
+        fields[err.path.join(".")] = err.message
+      })
+      logger.debug("Signup validation failed", { fields })
+      return NextResponse.json(
+        {
+          success: false,
+          error: parseResult.error.errors[0]?.message || "Validation failed",
+          code: "VALIDATION_ERROR",
+          fields,
+        },
+        { status: 400 },
+      )
+    }
+    const validated = parseResult.data
     logger.debug("Signup input validated, calling AuthService")
 
     const result = await AuthService.signUp(validated)
@@ -103,6 +121,19 @@ export async function POST(request: Request) {
   } catch (error: any) {
     if (error.message?.includes("already exists")) {
       return handleError(new ConflictError("An account with this email already exists"))
+    }
+    // Catch validation-like errors from AuthService (e.g. missing package tier)
+    if (error.message?.includes("Package tier is required") ||
+        error.message?.includes("Validation")) {
+      return handleError(new ValidationError(error.message))
+    }
+    // Catch Supabase/database connectivity errors — surface as structured error
+    if (error.message?.includes("Database connection error") ||
+        error.message?.includes("Failed to create") ||
+        error.message?.includes("Failed to initialize")) {
+      logger.error("Signup service error", error as Error)
+      const serviceErr = new AppError("Service temporarily unavailable. Please try again.", 500, "SERVICE_ERROR")
+      return handleError(serviceErr)
     }
     return handleError(error)
   }
