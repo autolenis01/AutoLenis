@@ -4,7 +4,7 @@ import { signUpSchema } from "@/lib/validators/auth"
 import { setSessionCookie } from "@/lib/auth-server"
 import { getRoleBasedRedirect } from "@/lib/auth"
 import { rateLimit, rateLimits } from "@/lib/middleware/rate-limit"
-import { handleError, ConflictError } from "@/lib/middleware/error-handler"
+import { handleError, ConflictError, ValidationError } from "@/lib/middleware/error-handler"
 import { logger } from "@/lib/logger"
 import { onUserCreated } from "@/lib/email/triggers"
 import { emailVerificationService } from "@/lib/services/email-verification.service"
@@ -36,29 +36,52 @@ export async function POST(request: Request) {
     )
   }
 
+  // ── Parse & validate BEFORE rate limiting ──────────────────────────────
+  // Invalid requests get an immediate 400 without consuming rate-limit
+  // budget.  Only structurally valid requests count towards the limit.
+  let body
+  try {
+    body = await request.json()
+  } catch (parseError) {
+    logger.error("Failed to parse signup request body", { error: parseError })
+    return NextResponse.json(
+      {
+        success: false,
+        error: "Invalid request format",
+      },
+      { status: 400 },
+    )
+  }
+
+  logger.debug("Parsing signup request", { email: body.email })
+
+  // Use safeParse to guarantee validation errors always return 400, never 500
+  const parseResult = signUpSchema.safeParse(body)
+  if (!parseResult.success) {
+    const fields: Record<string, string> = {}
+    parseResult.error.errors.forEach((err) => {
+      fields[err.path.join(".")] = err.message
+    })
+    logger.debug("Signup validation failed", { fields })
+    return NextResponse.json(
+      {
+        success: false,
+        error: parseResult.error.errors[0]?.message || "Validation failed",
+        code: "VALIDATION_ERROR",
+        fields,
+      },
+      { status: 400 },
+    )
+  }
+  const validated = parseResult.data
+
+  // ── Rate-limit only valid-looking requests ─────────────────────────────
   try {
     const rateLimitResponse = await rateLimit(request as any, rateLimits.auth)
     if (rateLimitResponse) {
       return rateLimitResponse
     }
 
-    let body
-    try {
-      body = await request.json()
-    } catch (parseError) {
-      logger.error("Failed to parse signup request body", { error: parseError })
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Invalid request format",
-        },
-        { status: 400 },
-      )
-    }
-
-    logger.debug("Parsing signup request", { email: body.email })
-
-    const validated = signUpSchema.parse(body)
     logger.debug("Signup input validated, calling AuthService")
 
     const result = await AuthService.signUp(validated)
@@ -104,6 +127,20 @@ export async function POST(request: Request) {
     if (error.message?.includes("already exists")) {
       return handleError(new ConflictError("An account with this email already exists"))
     }
-    return handleError(error)
+    // Catch validation-like errors from AuthService (e.g. missing package tier)
+    if (error.message?.includes("Package tier is required") ||
+        error.message?.includes("Validation")) {
+      return handleError(new ValidationError("Registration validation failed. Please check your input."))
+    }
+    // All other errors — structured response, never expose internal details
+    logger.error("Signup service error", error instanceof Error ? error : undefined)
+    return NextResponse.json(
+      {
+        success: false,
+        error: "Unable to complete registration. Please try again later.",
+        code: "SERVICE_ERROR",
+      },
+      { status: 422 },
+    )
   }
 }

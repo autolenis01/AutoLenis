@@ -76,6 +76,68 @@ curl -i https://your-app.vercel.app/api/health
 - To run migrations manually: `pnpm db:push` or `pnpm db:migrate`
 - Ensure `POSTGRES_PRISMA_URL` is set before deployment
 
+## Staging Deployment (staging.autolenis.com)
+
+### DNS Setup
+
+Add a CNAME record at your DNS provider (use the target provided by Vercel when adding the domain):
+
+| Record Type | Name      | Value                                   | Status |
+|-------------|-----------|---------------------------------------- |--------|
+| CNAME       | `staging` | `90ee6f36f7268215.vercel-dns-016.com.`  | ✅ Live |
+
+> Vercel assigns a project-specific DNS target when you add a domain. Use the exact value shown in the Vercel dashboard under **Project Settings → Domains**.
+
+If using **Cloudflare**, set proxy status to **"DNS only"** (grey cloud) until verified.
+
+### Vercel Dashboard
+
+1. Go to **Project Settings → Domains**.
+2. Add `staging.autolenis.com`.
+3. Assign it to the **Preview** environment so it reflects the latest preview deployment.
+4. Wait for Vercel to verify the domain and provision SSL.
+
+### Staging Environment Variables
+
+Set these in Vercel → **Environment Variables** scoped to the **Preview** environment:
+
+| Variable | Staging Value |
+|----------|--------------|
+| `NEXT_PUBLIC_APP_URL` | `https://staging.autolenis.com` |
+| `NEXTAUTH_URL` | `https://staging.autolenis.com` |
+| `STRIPE_SECRET_KEY` | Stripe **test-mode** key (`sk_test_...`) |
+| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Stripe **test-mode** key (`pk_test_...`) |
+| `STRIPE_WEBHOOK_SECRET` | Stripe test webhook signing secret |
+| All other required vars | Same as production, pointing to staging Supabase |
+
+### Verify Staging
+
+```bash
+# DNS resolution
+nslookup staging.autolenis.com
+
+# HTTP response
+curl -I https://staging.autolenis.com
+
+# Health check
+curl https://staging.autolenis.com/api/health
+
+# Run buyer package UAT
+SMOKE_BASE_URL=https://staging.autolenis.com pnpm test:e2e e2e/buyer-package-uat.spec.ts --project=chromium
+```
+
+### Alternative: Vercel Preview URL
+
+If `staging.autolenis.com` is not yet configured, run UAT against a Vercel preview deployment URL:
+
+```bash
+SMOKE_BASE_URL=https://auto-lenis-<hash>.vercel.app pnpm test:e2e e2e/buyer-package-uat.spec.ts --project=chromium
+```
+
+Find the preview URL in the Vercel dashboard under **Deployments** or in the GitHub PR deployment status.
+
+> See `DNS_CHECKLIST.md` for the full DNS configuration guide and troubleshooting.
+
 ## What to Do If NextAuth Breaks on Preview URLs
 
 Vercel preview deployments get unique URLs (e.g., `your-app-abc123.vercel.app`). This can break auth:

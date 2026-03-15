@@ -15,8 +15,21 @@ const nextConfig = {
   },
   serverExternalPackages: ['@prisma/client', 'prisma'],
   async headers() {
-    // Get allowed origins from environment
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://autolenis.com'
+    // Determine the allowed CORS origin.
+    // Priority: explicit NEXT_PUBLIC_APP_URL > Vercel-provided URL > production default.
+    // This ensures Vercel preview/staging deployments return correct CORS headers
+    // without requiring NEXT_PUBLIC_APP_URL to be set for every preview environment.
+    let appUrl = process.env.NEXT_PUBLIC_APP_URL
+    if (!appUrl && process.env.VERCEL_URL) {
+      // Only trust VERCEL_URL for this project's own deployments
+      const vercelUrl = process.env.VERCEL_URL
+      if (vercelUrl.startsWith('auto-lenis-') && vercelUrl.endsWith('.vercel.app')) {
+        appUrl = `https://${vercelUrl}`
+      }
+    }
+    if (!appUrl) {
+      appUrl = 'https://autolenis.com'
+    }
     
     return [
       {
