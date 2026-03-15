@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { dealerOnboardingService } from "@/lib/services/dealer-onboarding"
+import { dealerAgreementService } from "@/lib/services/dealer-agreement.service"
 import { docuSignService } from "@/lib/services/dealer-onboarding/docusign.service"
 import { logger } from "@/lib/logger"
 
@@ -8,6 +9,7 @@ import { logger } from "@/lib/logger"
  *
  * DocuSign Connect webhook handler for dealer agreement events.
  * Handles: sent, delivered, completed, declined, voided.
+ * Delegates to both legacy onboarding service and new agreement service.
  */
 export async function POST(req: NextRequest) {
   try {
@@ -26,6 +28,8 @@ export async function POST(req: NextRequest) {
     const payload = JSON.parse(rawBody)
     const event = payload?.event
     const envelopeId = payload?.data?.envelopeId
+    const envelopeStatus = payload?.data?.envelopeSummary?.status
+    const eventTime = payload?.generatedDateTime || new Date().toISOString()
 
     if (!envelopeId) {
       return NextResponse.json(
@@ -36,24 +40,19 @@ export async function POST(req: NextRequest) {
 
     logger.info("DocuSign webhook received", { event, envelopeId })
 
-    switch (event) {
-      case "envelope-completed":
-        await dealerOnboardingService.handleDocusignEnvelopeCompleted(envelopeId)
-        break
+    // Delegate to DealerAgreementService (new canonical handler)
+    if (envelopeStatus) {
+      await dealerAgreementService.processWebhookEvent(
+        envelopeId,
+        envelopeStatus,
+        eventTime,
+        payload as Record<string, unknown>,
+      )
+    }
 
-      case "envelope-sent":
-      case "envelope-delivered":
-        // Informational — no action needed beyond logging
-        logger.info("DocuSign envelope status update", { event, envelopeId })
-        break
-
-      case "envelope-declined":
-      case "envelope-voided":
-        logger.warn("DocuSign envelope declined/voided", { event, envelopeId })
-        break
-
-      default:
-        logger.info("DocuSign webhook event not handled", { event, envelopeId })
+    // Legacy: also handle via onboarding service for backward compat
+    if (event === "envelope-completed") {
+      await dealerOnboardingService.handleDocusignEnvelopeCompleted(envelopeId)
     }
 
     return NextResponse.json({ received: true })

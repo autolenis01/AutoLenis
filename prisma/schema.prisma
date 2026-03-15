@@ -246,6 +246,12 @@ model Dealer {
   complianceReviewedAt DateTime?
   activatedAt          DateTime?
 
+  // Agreement gating fields
+  agreementRequired    Boolean   @default(true)
+  agreementCompleted   Boolean   @default(false)
+  agreementCompletedAt DateTime?
+  docusignBlocked      Boolean   @default(false)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -256,6 +262,7 @@ model Dealer {
   scans                 ContractShieldScan[]
   pickups               PickupAppointment[]
   dealerUsers           DealerUser[]
+  dealerAgreements      DealerAgreement[]
 
   @@index([licenseNumber])
   @@index([workspaceId])
@@ -354,6 +361,89 @@ model DealerApplication {
   @@index([accessState])
   @@index([agreementEnvelopeId])
   @@index([createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// Dealer Agreement — DocuSign-backed agreement tracking
+// ---------------------------------------------------------------------------
+
+model DealerAgreement {
+  id       String @id @default(cuid())
+  dealerId String
+  dealer   Dealer @relation(fields: [dealerId], references: [id], onDelete: Cascade)
+
+  version       String
+  agreementName String
+  agreementType String @default("DEALER_PARTICIPATION")
+
+  // Agreement lifecycle status
+  status String @default("REQUIRED") // REQUIRED, DRAFTED, SENT, DELIVERED, VIEWED, SIGNED, COMPLETED, DECLINED, VOIDED, EXPIRED, ERROR
+
+  // DocuSign metadata
+  docusignAccountId    String?
+  docusignTemplateId   String?
+  docusignEnvelopeId   String? @unique
+  docusignRecipientId  String?
+  docusignClientUserId String?
+
+  // Signer information
+  signerEmail String
+  signerName  String
+  signerTitle String?
+
+  // Lifecycle timestamps
+  sentAt      DateTime?
+  deliveredAt DateTime?
+  viewedAt    DateTime?
+  signedAt    DateTime?
+  completedAt DateTime?
+  voidedAt    DateTime?
+  expiredAt   DateTime?
+
+  // Webhook tracking
+  lastWebhookAt DateTime?
+  webhookStatus String?
+  webhookPayload Json @default("{}")
+
+  // Stored document references
+  signedDocumentStoragePath String?
+  certificateStoragePath    String?
+  summaryPdfStoragePath     String?
+
+  // Audit
+  createdBy String?
+  updatedBy String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("dealer_agreements")
+  @@index([dealerId])
+  @@index([status])
+  @@index([completedAt(sort: Desc)])
+}
+
+// ---------------------------------------------------------------------------
+// DocuSign Connect Event Ledger — webhook event log
+// ---------------------------------------------------------------------------
+
+model DocuSignConnectEvent {
+  id         String  @id @default(cuid())
+  eventHash  String? @unique
+  envelopeId String
+
+  eventType String?
+  eventTime DateTime?
+  processed Boolean   @default(false)
+  processedAt DateTime?
+  processingError String?
+  payload   Json     @default("{}")
+
+  createdAt DateTime @default(now())
+
+  @@map("docusign_connect_events")
+  @@index([envelopeId])
+  @@index([processed, createdAt(sort: Desc)])
 }
 
 model AdminUser {
